@@ -465,9 +465,11 @@ export function createHandler(ctx: ServerContext): Handler {
       const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
       const prompt = String(body?.prompt ?? "").trim();
       const model = String(body?.model ?? (ctx.settings.get().chatModel || "deepseek/deepseek-chat")).trim();
+      const useWebSearch = Boolean(body?.web_search ?? true);
       if (!prompt) return json({ error: "Prompt obrigatorio." }, 400);
       try {
         const system = `Voce e um redator profissional de blog brasileiro. Escreva artigos em portugues do Brasil, com otima qualidade editorial, SEO otimizado e HTML semantico pronto para publicacao.
+${useWebSearch ? "\nIMPORTANTE: A pesquisa web em tempo real esta ativada. Incorpore fatos recentes, estatisticas, referencias e informacoes atualizadas com autoridade editorial." : ""}
 
 **FORMATO DE RESPOSTA:** Retorne APENAS um JSON valido com:
 {
@@ -490,6 +492,7 @@ REGRAS:
           user: `Escreva um artigo completo de blog sobre: ${prompt}`,
           maxTokens: 4096,
           temperature: 0.8,
+          webSearch: useWebSearch,
         });
         let parsed: Record<string, unknown> = {};
         try {

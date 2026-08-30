@@ -829,7 +829,7 @@ function agentCard(
   }
 
   const toolsBadge = agent.toolsEnabled
-    ? '<span class="cat-chip" style="background:#ecfdf5;border-color:#a7f3d0;color:#065f46;font-weight:500">Tools SDK</span>'
+    ? '<span class="cat-chip" style="background:#ecfdf5;border-color:#a7f3d0;color:#065f46;font-weight:500">Web Search &amp; Tools</span>'
     : '';
 
   let sourceBadge = "";
@@ -2401,6 +2401,16 @@ export function renderCreatePostTab(data: DashboardData): string {
               </select>
             </div>
 
+            <div style="background:var(--c-bg);padding:10px 12px;border-radius:var(--radius);border:1px solid var(--c-border)">
+              <label style="display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600;color:var(--c-text);cursor:pointer">
+                <input type="checkbox" id="gen-web-search" value="1" checked style="accent-color:var(--c-accent);width:15px;height:15px">
+                Pesquisa Web em Tempo Real (OpenRouter)
+              </label>
+              <p style="margin:4px 0 0 23px;font-size:11px;color:var(--c-text-soft);line-height:1.4">
+                Consulta fatos recentes, notícias e fontes na internet antes de redigir o artigo.
+              </p>
+            </div>
+
             <button type="button" class="button" id="btn-generate-content" style="width:100%;height:40px">
               Gerar Artigo Completo
             </button>
@@ -2823,16 +2833,17 @@ export function renderCreatePostTab(data: DashboardData): string {
     bG.addEventListener("click", function(){
       var p = document.getElementById("gen-prompt") ? document.getElementById("gen-prompt").value.trim() : "";
       var m = document.getElementById("gen-model") ? document.getElementById("gen-model").value : "";
+      var ws = document.getElementById("gen-web-search") ? document.getElementById("gen-web-search").checked : true;
       if (!p) {
         gS.innerHTML = '<span style="color:var(--c-danger);font-size:12px">Defina um tópico para o artigo.</span>';
         return;
       }
-      gS.innerHTML = '<div class="gen-loading"><div class="spinner"></div>Escrevendo artigo completo...</div>';
+      gS.innerHTML = '<div class="gen-loading"><div class="spinner"></div>' + (ws ? 'Pesquisando na web e escrevendo artigo...' : 'Escrevendo artigo completo...') + '</div>';
       gR.style.display = "none";
       bF.style.display = "none";
       lastGen = null;
 
-      api("/admin/create-post/generate-content", { prompt: p, model: m }).then(function(r){
+      api("/admin/create-post/generate-content", { prompt: p, model: m, web_search: ws }).then(function(r){
         gS.innerHTML = "";
         if (r.error) {
           gS.innerHTML = '<span style="color:var(--c-danger);font-size:12px">' + r.error + '</span>';

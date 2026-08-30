@@ -243,6 +243,10 @@ export class AiProviderPool {
       max_tokens: opts.maxTokens ?? 8192,
     };
 
+    if (opts.webSearch && config.provider === "openrouter") {
+      payload.plugins = [{ id: "web", max_results: 5 }];
+    }
+
     const res = await fetch(endpoint, {
       method: "POST",
       headers,

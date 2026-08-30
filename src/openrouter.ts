@@ -4,6 +4,7 @@ export interface CompletionOptions {
   user: string;
   maxTokens?: number;
   temperature?: number;
+  webSearch?: boolean;
 }
 
 export interface CompletionResult {
@@ -109,6 +110,18 @@ export class OpenRouterClient {
     for (let i = 0; i < keys.length; i++) {
       const key = keys[i];
       try {
+        const payload: Record<string, unknown> = {
+          model: opts.model,
+          max_tokens: opts.maxTokens ?? 8192,
+          temperature: opts.temperature ?? 0.85,
+          messages: [
+            ...(opts.system ? [{ role: "system", content: opts.system }] : []),
+            { role: "user", content: opts.user },
+          ],
+        };
+        if (opts.webSearch) {
+          payload.plugins = [{ id: "web", max_results: 5 }];
+        }
         const res = await fetch(CHAT_URL, {
           method: "POST",
           headers: {
@@ -116,15 +129,7 @@ export class OpenRouterClient {
             "X-OpenRouter-Title": this.appTitle,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({
-            model: opts.model,
-            max_tokens: opts.maxTokens ?? 8192,
-            temperature: opts.temperature ?? 0.85,
-            messages: [
-              ...(opts.system ? [{ role: "system", content: opts.system }] : []),
-              { role: "user", content: opts.user },
-            ],
-          }),
+          body: JSON.stringify(payload),
         });
         if (!res.ok) {
           const body = await res.text();
