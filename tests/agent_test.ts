@@ -1,0 +1,312 @@
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import { buildUserPrompt, categoryName, parseArticleJson } from "../src/agent.ts";
+import { createSession, parseCookies, SESSION_COOKIE, verifySession } from "../src/auth.ts";
+
+const LONG_CONTENT = "<p>" +
+  "Conteúdo de exemplo com mais de duzentos caracteres para passar na validação de tamanho mínimo do artigo. "
+    .repeat(5) +
+  "</p>";
+
+const ARTICLE = {
+  title: "Meu artigo incrível",
+  excerpt: "Resumo curto",
+  content_html: LONG_CONTENT,
+  slug: "meu-artigo-incrivel",
+  tags: "ia, tutorial",
+};
+
+test("parseArticleJson: JSON puro", () => {
+  const article = parseArticleJson(JSON.stringify(ARTICLE));
+  assert.equal(article.title, "Meu artigo incrível");
+  assert.equal(article.slug, "meu-artigo-incrivel");
+  assert.ok(article.contentHtml.length > 200);
+});
+
+test("parseArticleJson: com fences de markdown", () => {
+  const raw = "```json\n" + JSON.stringify(ARTICLE) + "\n```";
+  const article = parseArticleJson(raw);
+  assert.equal(article.title, "Meu artigo incrível");
+});
+
+test("parseArticleJson: texto antes e depois do JSON", () => {
+  const raw = "Aqui está seu artigo:\n" + JSON.stringify(ARTICLE) + "\nEspero que goste!";
+  const article = parseArticleJson(raw);
+  assert.equal(article.tags, "ia, tutorial");
+});
+
+test("parseArticleJson: título inválido lança erro", () => {
+  assert.throws(() => parseArticleJson(JSON.stringify({ ...ARTICLE, title: "x" })));
+});
+
+test("parseArticleJson: conteúdo curto lança erro", () => {
+  assert.throws(() =>
+    parseArticleJson(JSON.stringify({ ...ARTICLE, content_html: "<p>curto</p>" }))
+  );
+});
+
+test("parseArticleJson: resposta vazia lança erro", () => {
+  assert.throws(() => parseArticleJson("   "));
+});
+
+test("parseArticleJson: resposta não-JSON lança erro", () => {
+  assert.throws(() => parseArticleJson("Apenas um texto solto sem JSON"));
+});
+
+test("buildUserPrompt: inclui tema e categoria", () => {
+  const prompt = buildUserPrompt({
+    id: 1,
+    name: "Agente Teste",
+    description: "Foco em IA",
+    model: "test/model",
+    imageModel: "",
+    imageSourceMode: "ai_only",
+    toolsEnabled: false,
+    role: "writer",
+    reviewerId: null,
+    avatar: "bot",
+    imageAspectRatio: "9:16",
+    dailyPostLimit: 0,
+    blogId: 1,
+    categoryId: 1,
+    publishToBlog: true,
+    pinterestEnabled: false,
+    imageGen: false,
+    scheduleMinutes: 720,
+    maxTokens: 8192,
+    prompt: "Escreva sobre agentes",
+    status: "active",
+    postCount: 0,
+    lastRunAt: null,
+    lastError: null,
+    createdAt: new Date().toISOString(),
+  });
+  assert.ok(prompt.includes("Escreva sobre agentes"));
+  assert.ok(prompt.includes("Inteligência Artificial"));
+});
+
+test("buildUserPrompt: inclui retroalimentação de posts mais vistos", () => {
+  const agent = {
+    id: 1,
+    name: "Agente Analytics",
+    description: "Foco em IA",
+    model: "test/model",
+    imageModel: "",
+    imageSourceMode: "ai_only" as const,
+    toolsEnabled: false,
+    role: "writer" as const,
+    reviewerId: null,
+    avatar: "bot",
+    imageAspectRatio: "9:16" as const,
+    dailyPostLimit: 0,
+    blogId: 1,
+    categoryId: 1,
+    publishToBlog: true,
+    pinterestEnabled: false,
+    imageGen: false,
+    scheduleMinutes: 720,
+    maxTokens: 8192,
+    prompt: "Tendências de mercado",
+    status: "active" as const,
+    postCount: 0,
+    lastRunAt: null,
+    lastError: null,
+    createdAt: new Date().toISOString(),
+  };
+
+  const topPosts = [
+    { id: 10, title: "Top 5 Modelos Gratuitos", slug: "top-5-modelos", views_7d: 1450, view_count: 5000, unique_visitors: 1200 },
+    { id: 11, title: "Como Criar Agentes", slug: "como-criar-agentes", views_7d: 890, view_count: 3200, unique_visitors: 750 },
+  ];
+
+  const prompt = buildUserPrompt(agent, topPosts);
+  assert.ok(prompt.includes("DESEMPENHO RECENTE DE AUDIÊNCIA"));
+  assert.ok(prompt.includes("Top 5 Modelos Gratuitos"));
+  assert.ok(prompt.includes("1.450 visualizações"));
+  assert.ok(prompt.includes("DIRETRIZ EDITORIAL DE ALTA PERFORMANCE"));
+});
+
+test("categoryName: mapa conhecido e fallback", () => {
+  assert.equal(categoryName(1), "Inteligência Artificial");
+  assert.equal(categoryName(2), "Economia");
+  assert.equal(categoryName(99), "Categoria 99");
+});
+
+test("auth: sessão válida", async () => {
+  const secret = "segredo-super-forte-12345";
+  const session = await createSession("admin", secret);
+  assert.equal(await verifySession(session, secret), true);
+});
+
+test("auth: sessão adulterada é rejeitada", async () => {
+  const secret = "segredo-super-forte-12345";
+  const session = await createSession("admin", secret);
+  const dot = session.lastIndexOf(".");
+  const first = session[dot + 1];
+  const tampered = session.slice(0, dot + 1) + (first === "a" ? "b" : "a") +
+    session.slice(dot + 2);
+  assert.equal(await verifySession(tampered, secret), false);
+});
+
+test("auth: sessão expirada é rejeitada", async () => {
+  const secret = "segredo-super-forte-12345";
+  const session = await createSession("admin", secret, Date.now() - 25 * 60 * 60 * 1000);
+  assert.equal(await verifySession(session, secret), false);
+});
+
+test("auth: cookie inválido é rejeitado", async () => {
+  assert.equal(await verifySession("abc", "segredo"), false);
+  assert.equal(await verifySession(null, "segredo"), false);
+});
+
+test("auth: parseCookies", () => {
+  const cookies = parseCookies(`${SESSION_COOKIE}=abc123; outro=def`);
+  assert.equal(cookies[SESSION_COOKIE], "abc123");
+  assert.equal(cookies.outro, "def");
+  assert.deepEqual(parseCookies(null), {});
+});
+
+test("BlogApiClient: listPosts com sort e metricas", async () => {
+  const { BlogApiClient } = await import("../src/blog_api.ts");
+  const originalFetch = globalThis.fetch;
+  let capturedUrl = "";
+
+  globalThis.fetch = (async (input: string | URL | Request) => {
+    capturedUrl = String(input);
+    return new Response(
+      JSON.stringify({
+        posts: [
+          {
+            id: 10,
+            title: "Post Popular",
+            slug: "post-popular",
+            view_count: 1500,
+            views_7d: 300,
+            unique_visitors: 1200,
+          },
+        ],
+        pagination: { page: 1, limit: 10, total: 1, totalPages: 1 },
+      }),
+      { status: 200, headers: { "Content-Type": "application/json" } },
+    );
+  }) as typeof fetch;
+
+  try {
+    const client = new BlogApiClient("https://meublog.com/api/cli", "token123");
+    const topPosts = await client.getTopPosts("views", 5);
+    assert.ok(capturedUrl.includes("sort=views"));
+    assert.ok(capturedUrl.includes("limit=5"));
+    assert.equal(topPosts[0].unique_visitors, 1200);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("reviewAndPolishArticle: aprimora rascunho com agente revisor", async () => {
+  const { reviewAndPolishArticle } = await import("../src/agent.ts");
+  const { OpenRouterClient } = await import("../src/openrouter.ts");
+
+  const originalFetch = globalThis.fetch;
+  const mockPolished = {
+    title: "Título Polido e Atraente para SEO",
+    excerpt: "Resumo perfeitamente refinado com menos de 160 caracteres.",
+    content_html: LONG_CONTENT + "<p>Texto adicional revisado pelo editor.</p>",
+    slug: "titulo-polido-e-atraente-para-seo",
+    tags: "ia, tecnologia, seo",
+  };
+
+  globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
+    const url = String(input);
+    if (url.includes("chat/completions")) {
+      return new Response(
+        JSON.stringify({
+          choices: [{ message: { content: JSON.stringify(mockPolished) } }],
+          model: "google/gemini-2.0-flash-001",
+          usage: { prompt_tokens: 150, completion_tokens: 250 },
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      );
+    }
+    if (url.includes("models")) {
+      return new Response(JSON.stringify({ data: [] }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+    return new Response("Not Found", { status: 404 });
+  }) as typeof fetch;
+
+  try {
+    const or = new OpenRouterClient(() => "sk-teste");
+    const reviewerAgent = {
+      id: 2,
+      name: "Revisor Free",
+      description: "Editor de qualidade",
+      model: "google/gemini-2.0-flash-001",
+      imageModel: "",
+      imageSourceMode: "ai_only" as const,
+      toolsEnabled: false,
+      role: "reviewer" as const,
+      reviewerId: null,
+      avatar: "bot",
+      imageAspectRatio: "9:16" as const,
+      dailyPostLimit: 0,
+      blogId: null,
+      categoryId: 1,
+      publishToBlog: false,
+      pinterestEnabled: false,
+      imageGen: false,
+      scheduleMinutes: 0,
+      maxTokens: 4096,
+      prompt: "Elimine clichês de IA",
+      status: "active" as const,
+      postCount: 0,
+      lastRunAt: null,
+      lastError: null,
+      createdAt: new Date().toISOString(),
+    };
+
+    const draft = {
+      title: "Rascunho Inicial",
+      excerpt: "Resumo preliminar",
+      contentHtml: LONG_CONTENT,
+      slug: "rascunho-inicial",
+      tags: "ia",
+    };
+
+    const res = await reviewAndPolishArticle(draft, reviewerAgent, or);
+    assert.equal(res.article.title, "Título Polido e Atraente para SEO");
+    assert.equal(res.article.slug, "titulo-polido-e-atraente-para-seo");
+    assert.equal(res.tokensIn, 150);
+    assert.equal(res.tokensOut, 250);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("parseImagePostJson: interpreta JSON de post visual para Pinterest", async () => {
+  const { parseImagePostJson } = await import("../src/agent.ts");
+  const raw = JSON.stringify({
+    title: "10 Ideias de Home Office Minimalista",
+    excerpt: "Inspirações e setups organizados para aumentar sua produtividade.",
+    image_prompt: "A minimalist modern home office desk setup with warm natural sunlight, wood textures, indoor plants, 8k photography",
+    content_html: "<p>Dicas para organizar sua mesa.</p>",
+    tags: "home office, decor, produtividade",
+  });
+  const res = parseImagePostJson(raw);
+  assert.equal(res.title, "10 Ideias de Home Office Minimalista");
+  assert.ok(res.image_prompt.includes("minimalist"));
+  assert.ok(res.excerpt.includes("Inspirações"));
+});
+
+test("renderAvatar: renderiza badge 2.5D com SVG ou imagem", async () => {
+  const { renderAvatar } = await import("../src/dashboard.ts");
+  const svgBadge = renderAvatar("bot", 44, "gold");
+  assert.ok(svgBadge.includes("badge-25d"));
+  assert.ok(svgBadge.includes("badge-gold"));
+  assert.ok(svgBadge.includes("<svg"));
+
+  const imgBadge = renderAvatar("https://meusite.com/avatar.png", 50, "silver");
+  assert.ok(imgBadge.includes("badge-silver"));
+  assert.ok(imgBadge.includes("<img src=\"https://meusite.com/avatar.png\""));
+});

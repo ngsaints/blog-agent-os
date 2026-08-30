@@ -1,0 +1,87 @@
+import process from "node:process";
+import { loadConfig, validateConfig } from "./src/config.ts";
+import { type SqlStore, TursoStore } from "./src/turso_store.ts";
+import { LocalSqliteStore } from "./src/local_store.ts";
+import { SettingsService } from "./src/settings.ts";
+import { OpenRouterClient } from "./src/openrouter.ts";
+import { createHandler, makeRunner } from "./src/server.ts";
+import { startScheduler } from "./src/scheduler.ts";
+import { serveNode } from "./src/node_server.ts";
+import { ChatService } from "./src/chat.ts";
+
+const config = loadConfig();
+
+const missing = validateConfig(config);
+if (missing.length > 0) {
+  console.error(
+    `Configuração incompleta. Defina no .env: ${missing.join(", ")}`,
+  );
+  process.exit(1);
+}
+
+const useTurso = Boolean(config.tursoDbUrl && config.tursoAuthToken);
+const store: SqlStore = useTurso
+  ? new TursoStore(config.tursoDbUrl, config.tursoAuthToken)
+  : new LocalSqliteStore(config.sqlitePath);
+try {
+  await store.init();
+} catch (err) {
+  const target = useTurso ? "TURSO_DB_URL e TURSO_AUTH_TOKEN" : config.sqlitePath;
+  console.error(`Falha ao conectar no banco. Verifique ${target}.`);
+  console.error(err instanceof Error ? err.message : err);
+  process.exit(1);
+}
+if (!useTurso) console.log(`SQLite local ativo → ${config.sqlitePath}`);
+
+const settings = new SettingsService(store);
+try {
+  await settings.load();
+} catch (err) {
+  console.error("Falha ao carregar configurações do painel.");
+  console.error(err instanceof Error ? err.message : err);
+  process.exit(1);
+}
+
+const oldConfig = await store.getSettings();
+if (oldConfig.blog_api_base_url && oldConfig.blog_api_token) {
+  const existing = await store.listBlogs();
+  if (existing.length === 0) {
+    let name = "Blog 1";
+    try {
+      name = new URL(oldConfig.blog_api_base_url).hostname;
+    } catch {
+      // mantém o nome padrão
+    }
+    await store.saveBlog({
+      name,
+      baseUrl: oldConfig.blog_api_base_url,
+      token: oldConfig.blog_api_token,
+    });
+    console.log(`Blog migrado das configurações antigas → "${name}"`);
+  }
+  await store.setSettings({
+    blog_api_base_url: "",
+    blog_api_token: "",
+  });
+}
+
+import { PexelsClient } from "./src/pexels.ts";
+import { AiProviderPool } from "./src/ai_pool.ts";
+
+const aiPool = new AiProviderPool(() => settings.getAiProviderConfigs());
+const openrouter = new OpenRouterClient(
+  () => [settings.get().openrouterApiKey, settings.get().openrouterBackupKeys || ""].filter(Boolean).join("\n"),
+  "Blog Agent OS",
+  aiPool,
+);
+const pexels = new PexelsClient(() => settings.get().pexelsApiKey);
+const runner = makeRunner(openrouter, pexels, store, settings);
+const chat = new ChatService(store, openrouter, settings, runner);
+
+startScheduler(config.runIntervalMinutes, store, runner);
+
+const handler = createHandler({ config, store, settings, openrouter, pexels, runner, chat });
+
+serveNode(handler, config.port, () => {
+  console.log(`Blog Agent OS → http://localhost:${config.port}/admin`);
+});

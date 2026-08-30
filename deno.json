@@ -1,0 +1,16 @@
+{
+  "name": "blog-agent-os",
+  "version": "0.1.0",
+  "imports": {
+    "@libsql/client/web": "npm:@libsql/client@0.14.0/web"
+  },
+  "tasks": {
+    "dev": "deno run --env-file=.env --allow-net --allow-env --allow-read --allow-write --watch main.ts",
+    "start": "deno run --env-file=.env --allow-net --allow-env --allow-read --allow-write main.ts",
+    "check": "deno check main.ts",
+    "test": "deno test --allow-env --allow-net tests/"
+  },
+  "fmt": {
+    "lineWidth": 100
+  }
+}

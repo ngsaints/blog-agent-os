@@ -1,0 +1,10 @@
+.env
+deno.lock
+node_modules/
+data/
+*.local
+.DS_Store
+*.zip
+*.log
+test-*.txt
+
