@@ -1,104 +1,143 @@
 # Blog Agent OS
 
-Painel que gerencia **agentes autônomos** que escrevem artigos sozinhos via [OpenRouter](https://openrouter.ai) e publicam direto na API CLI do blog (documentada em `CLI-API.md`).
+Sistema autônomo e painel de controle para criação, otimização e publicação automática de artigos em blogs via Inteligência Artificial.
 
-## Como funciona
+---
 
-1. Você cria um agente no painel: nome, foco/descrição, modelo OpenRouter, categoria do blog, frequência e instruções.
-2. O agente ativo gera o artigo (HTML + SEO) via `chat/completions`, em português do Brasil.
-3. Opcional: gera imagem de capa com um modelo de imagem e faz upload via `/api/cli/upload`.
-4. Publica no blog via `POST /api/cli/posts` (rascunho ou publicado, com ou sem Pinterest).
-5. Cada execução fica registrada: status, tokens, custo, ID do post e erros.
+## Recursos Principais
 
-## Stack
+### 1. Agentes Autônomos de Conteúdo
+- Criação e calibração de agentes especializados por nicho, tom de voz e categoria.
+- Frequência individual de publicação com agendamento automático.
+- Roteamento inteligente de tarefas editoriais e suporte a revisor de conteúdo.
+- Otimização contínua com base nos posts de melhor desempenho e audiência do blog.
 
-- **Deno 2 ou Node.js** — código 100% cross-runtime (sem APIs exclusivas de nenhum runtime)
-- **OpenRouter API** — modelos de texto e imagem
-- **Turso DB** — SQLite distribuído (libsql) ou **SQLite local** (`node:sqlite`) como fallback
-- Painel HTML/CSS embutido — sem build, sem dependências front-end
+### 2. Estúdio de Criação & Editor de Artigos (`/admin?tab=create-post`)
+- **Editor HTML Semântico & Visualização ao Vivo**: Alternância instantânea entre código HTML e prévia em tempo real com tipografia e diagramação de blog.
+- **Barra de Ferramentas de Formatação**: Inserção rápida de subtítulos (H2, H3), negrito, itálico, listas, citações, código, links e imagens.
+- **Métricas em Tempo Real**: Contagem de palavras, estimativa de tempo de leitura, contador de caracteres para título SEO (40-60 caracteres) e meta-description (120-160 caracteres).
+- **Estúdio de Imagem de Capa**:
+  - Upload direto do computador com suporte a arrastar e soltar (drag & drop).
+  - Integração nativa com o banco de fotos gratuitas Pexels em alta resolução com aplicação em 1 clique.
+  - Geração de capa com IA sugerida automaticamente a partir do título do artigo.
+- **Assistente IA Lateral**: Geração de artigos completos, gerador de títulos com alto CTR, meta-descriptions para Google e sugestão de tags.
 
-## Configuração
+### 3. Arena de Competência & Ranking
+- Pódio e classificação de agentes por volume de produção, taxa de sucesso, audiência e eficiência de custos.
+- Filtragem por blog específico ou visão unificada de todas as operações.
+
+### 4. Chat com Agente Estrategista (`/admin/chat`)
+- Conversação com assistente inteligente para planejamento editorial.
+- Criação de propostas estruturadas de agentes que podem ser aprovadas e persistidas diretamente no banco de dados.
+
+### 5. Pool Multi-IA com Failover Automático
+- Suporte a múltiplos provedores (OpenRouter, Groq, Anthropic).
+- Circuit Breaker inteligente: alternância automática entre provedores em caso de rate limit (erro 429) ou indisponibilidade temporária.
+
+---
+
+## Arquitetura & Stack Técnica
+
+- **Runtime**: Node.js (>= 22.13) e compatibilidade com Deno 2.
+- **Banco de Dados**: SQLite local (`node:sqlite`) com suporte a banco distribuído Turso (`libsql`).
+- **Provedores de IA**: OpenRouter API, Groq Cloud e Anthropic Claude.
+- **Banco de Imagens**: Pexels API e modelos de geração de imagem.
+- **Frontend**: Interface nativa em HTML5/CSS3 sem frameworks pesados, garantindo carregamento instantâneo.
+
+---
+
+## Configuração do Ambiente
+
+1. Clone o repositório ou baixe os arquivos do projeto.
+2. Copie o arquivo de exemplo de variáveis de ambiente:
 
 ```bash
 cp .env.example .env
 ```
 
-Preencha no `.env`:
+3. Configure o arquivo `.env`:
 
-| Variável | Obrigatório | Descrição |
-|----------|-------------|-----------|
-| `TURSO_DB_URL` | não | URL libsql do Turso (`libsql://nome-db-org.turso.io`). Se vazio, usa SQLite local |
-| `TURSO_AUTH_TOKEN` | não | Token do banco Turso |
-| `SQLITE_PATH` | não | Arquivo do SQLite local (default: `data/blog-agent.db`) |
-| `ADMIN_USERNAME` | não | Usuário do painel (default: `admin`) |
-| `ADMIN_PASSWORD` | sim | Senha do painel |
-| `SESSION_SECRET` | não | Segredo do cookie (default: senha admin) |
-| `RUN_INTERVAL_MINUTES` | não | Frequência do scheduler local (default: 15) |
-| `CRON_TOKEN` | não | Token exigido no endpoint `/__cron` |
-| `PORT` | não | Porta local (default: 8000) |
+| Variável | Obrigatório | Padrão | Descrição |
+|---|---|---|---|
+| `ADMIN_PASSWORD` | Sim | - | Senha de acesso ao painel de controle |
+| `ADMIN_USERNAME` | Não | `admin` | Nome de usuário para autenticação |
+| `PORT` | Não | `8000` | Porta local do servidor HTTP |
+| `SQLITE_PATH` | Não | `data/blog-agent.db` | Caminho do arquivo SQLite local |
+| `TURSO_DB_URL` | Não | - | URL libsql do Turso (para deploy distribuído) |
+| `TURSO_AUTH_TOKEN` | Não | - | Token de autenticação do Turso |
+| `SESSION_SECRET` | Não | - | Chave de assinatura dos cookies de sessão |
+| `RUN_INTERVAL_MINUTES` | Não | `15` | Intervalo padrão do scheduler |
+| `CRON_TOKEN` | Não | - | Token de segurança para o endpoint `/__cron` |
 
-> As chaves do OpenRouter e a integração com o blog (`OPENROUTER_API_KEY`, `OPENROUTER_MODEL`, `OPENROUTER_IMAGE_MODEL`, `BLOG_API_BASE_URL`, `BLOG_API_TOKEN`) são configuradas pela tela **Configurações** (`/admin/settings`) do painel e ficam salvas no banco.
+> As chaves de API (OpenRouter, Groq, Anthropic, Pexels e credenciais dos blogs conectados) podem ser gerenciadas diretamente na aba **Configurações & Blogs** (`/admin?tab=settings`) do painel e ficam armazenadas com segurança no banco de dados.
 
-### Rodar sem Turso (SQLite local)
+---
 
-Deixe `TURSO_DB_URL` e `TURSO_AUTH_TOKEN` vazios: o painel grava tudo em um SQLite local (`data/blog-agent.db`, configurável via `SQLITE_PATH`). Ideal para testar — só o `ADMIN_PASSWORD` é obrigatório. Em produção no Deno Deploy, use o Turso.
+## Como Executar
 
-## Documentação
-
-- [`docs/nodejs.md`](docs/nodejs.md) — guia completo para rodar com Node.js (requisitos, scripts, deploy)
-
-## Executar localmente
+### Com Node.js (Recomendado)
 
 ```bash
-deno task dev      # com watch
-deno task start    # produção local
-```
-
-Acesse **http://localhost:8000/admin** e entre com `ADMIN_USERNAME`/`ADMIN_PASSWORD`.
-
-### Com Node.js
-
-```bash
+# Instalar dependências
 npm install
-npm run dev         # com watch
-npm start           # produção local
+
+# Modo de desenvolvimento (com recarregamento automático)
+npm run dev
+
+# Modo de produção
+npm start
 ```
 
-> Requer Node >= 22.13. Detalhes e diferenças em [`docs/nodejs.md`](docs/nodejs.md).
+Acesse o painel em: **http://localhost:8000/admin**
 
-## Testes
+### Com Deno
 
 ```bash
-deno task test      # com Deno
-npm test            # com Node (node:test)
+deno task dev      # Modo desenvolvimento
+deno task start    # Modo produção
 ```
 
-## Deploy no Deno Deploy
+---
 
-1. Suba o repositório no GitHub e importe no [Deno Deploy](https://dash.deno.com) (entrypoint: `main.ts`).
-2. Configure as variáveis de ambiente do painel (mesmas do `.env`).
-3. Crie um **Cron** no Deno Deploy apontando para a URL `https://seu-projeto.deno.dev/__cron?token=SEU_CRON_TOKEN` com a frequência desejada (ex.: a cada 1 hora). O endpoint executa todos os agentes ativos cujo intervalo já venceu.
+## Testes & Qualidade de Código
 
-> O loop `setInterval` só roda de forma confiável na execução local. Em produção, use o cron do Deno Deploy (ou qualquer serviço externo de ping) chamando `/__cron`.
+Para rodar a suíte de testes unitários e de integração:
 
-## Endpoints
+```bash
+# Executar todos os testes
+npm test
+
+# Verificação estática de tipos (TypeScript)
+npm run check
+```
+
+---
+
+## Estrutura de Rotas e Endpoints
 
 | Método | Rota | Descrição |
-|--------|------|-----------|
-| GET | `/admin/login` | Login do painel |
-| GET/POST | `/admin` | Dashboard (protegido por sessão) |
-| GET/POST | `/admin/settings` | Configurações de integrações (OpenRouter e blog) |
-| POST | `/admin/agents` | Criar agente |
-| POST | `/admin/agents/:id/run` | Executar agente agora |
-| POST | `/admin/agents/:id/toggle` | Ativar/pausar |
-| POST | `/admin/agents/:id/update` | Editar agente |
-| POST | `/admin/agents/:id/delete` | Excluir agente |
-| POST | `/admin/run-due` | Executar agentes devidos |
-| GET | `/__cron?token=...` | Gatilho de agendamento (cron) |
-| GET | `/health` | Health check |
+|---|---|---|
+| GET | `/admin/login` | Tela de autenticação |
+| GET / POST | `/admin` | Painel principal com abas de gestão |
+| GET | `/admin/chat` | Interface de chat com assistente estrategista |
+| POST | `/admin/chat/conversations` | Criar nova sessão de conversa |
+| POST | `/admin/chat/messages` | Enviar mensagem e obter resposta com propostas |
+| POST | `/admin/create-post/publish` | Publicar post imediatamente ou salvar como rascunho |
+| POST | `/admin/create-post/upload-image` | Upload de arquivo de capa para o blog |
+| POST | `/admin/create-post/search-pexels` | Busca de fotografias em alta resolução no Pexels |
+| POST | `/admin/create-post/ai-assist` | Assistente rápido para títulos, resumos e tags |
+| POST | `/admin/create-post/generate-content` | Geração completa de artigo via IA |
+| POST | `/admin/create-post/generate-image` | Geração de imagem de capa via IA |
+| POST | `/admin/agents` | Cadastro de novo agente |
+| POST | `/admin/agents/:id/run` | Execução manual imediata de agente |
+| POST | `/admin/agents/:id/toggle` | Alternar agente entre ativo e pausado |
+| POST | `/admin/agents/:id/update` | Atualização cadastral de agente |
+| POST | `/admin/agents/:id/delete` | Exclusão de agente |
+| GET | `/__cron?token=...` | Disparo de agendamento externo para servidores serverless |
+| GET | `/health` | Verificação de integridade do serviço |
 
-## Notas
+---
 
-- O agente pede ao modelo um JSON no formato `{title, excerpt, content_html, slug, tags}`; a resposta é validada antes da publicação.
-- Se a geração de imagem falhar, o artigo é publicado normalmente sem capa.
-- O custo por execução é estimado com o pricing público da OpenRouter (`GET /api/v1/models`).
+## Licença
+
+Projeto desenvolvido para automação editorial e gerenciamento autônomo de blogs. Uso interno e profissional.
