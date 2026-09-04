@@ -463,7 +463,13 @@ export class LocalSqliteStore implements SqlStore {
   }
 
   async optimizeDatabase(): Promise<void> {
-    this.db.exec("VACUUM;");
+    if (this.filePath !== ":memory:") {
+      try {
+        this.db.exec("VACUUM;");
+      } catch (err) {
+        console.warn("VACUUM ignorado:", err);
+      }
+    }
   }
 
   async getDailyStats(dateIsoPrefix?: string): Promise<DailyUsageStats> {

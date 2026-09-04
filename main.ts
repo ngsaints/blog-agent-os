@@ -97,3 +97,7 @@ if (deno && typeof deno.serve === "function") {
     console.log(`Blog Agent OS (Node) → http://localhost:${config.port}/admin`);
   });
 }
+
+export default {
+  fetch: handler,
+};
