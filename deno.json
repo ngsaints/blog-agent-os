@@ -1,5 +1,4 @@
 {
-  "unstable": ["cron"],
   "imports": {
     "@libsql/client/web": "npm:@libsql/client@0.14.0/web"
   },

@@ -81,20 +81,33 @@ const pexels = new PexelsClient(() => settings.get().pexelsApiKey);
 const runner = makeRunner(openrouter, pexels, store, settings);
 const chat = new ChatService(store, openrouter, settings, runner);
 
-startScheduler(config.runIntervalMinutes, store, runner);
+startScheduler(config.runIntervalMinutes, store, runner, config.isServerless);
 
 const handler = createHandler({ config, store, settings, openrouter, pexels, runner, chat });
 
 const deno = (globalThis as unknown as {
-  Deno?: { serve?: (options: { port?: number; onListen?: () => void }, handler: (req: Request) => Promise<Response> | Response) => void };
+  Deno?: {
+    serve?: {
+      (handler: (req: Request) => Promise<Response> | Response): void;
+      (options: { port?: number; onListen?: () => void }, handler: (req: Request) => Promise<Response> | Response): void;
+    };
+  };
 }).Deno;
 
-if (deno && typeof deno.serve === "function") {
+if (config.isDenoDeploy) {
+  // Deno Deploy gerencia o socket e as requisições nativamente
+  if (deno && typeof deno.serve === "function") {
+    deno.serve(handler);
+    console.log("Blog Agent OS (Deno Deploy) inicializado com sucesso.");
+  }
+} else if (deno && typeof deno.serve === "function") {
+  // Deno local
   deno.serve({ port: config.port }, handler);
-  console.log(`Blog Agent OS (Deno) → http://localhost:${config.port}/admin`);
+  console.log(`Blog Agent OS (Deno local) → http://localhost:${config.port}/admin`);
 } else {
+  // Node.js local
   serveNode(handler, config.port, () => {
-    console.log(`Blog Agent OS (Node) → http://localhost:${config.port}/admin`);
+    console.log(`Blog Agent OS (Node local) → http://localhost:${config.port}/admin`);
   });
 }
 

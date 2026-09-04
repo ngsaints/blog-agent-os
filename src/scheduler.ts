@@ -113,7 +113,13 @@ export function startScheduler(
   _intervalMinutes: number,
   store: SqlStore,
   runner: AgentRunner,
+  isServerless = false,
 ): void {
+  if (isServerless) {
+    console.log("Ambiente Serverless/Deno Deploy: scheduler ativo via endpoint /__cron");
+    return;
+  }
+
   // Verificação inicial rápida ao iniciar o servidor
   setTimeout(() => {
     runDueAgents(store, runner)
@@ -132,20 +138,4 @@ export function startScheduler(
       .catch((err) => console.error(`Scheduler: ${err}`));
   }, 60_000);
   console.log(`Scheduler ativo (verificação a cada 1 minuto para frequências individuais)`);
-
-  const deno = (globalThis as unknown as {
-    Deno?: { cron?: (name: string, schedule: string, cb: () => Promise<void> | void) => void };
-  }).Deno;
-
-  if (deno && typeof deno.cron === "function") {
-    try {
-      deno.cron("Blog Agent OS Auto-Runner", "*/15 * * * *", async () => {
-        console.log("[Deno.cron] Disparo de verificação periódica de agentes...");
-        await runDueAgents(store, runner, true);
-      });
-      console.log("Deno.cron registrado com sucesso (*/15 * * * *)");
-    } catch (cronErr) {
-      console.warn("Deno.cron aviso:", cronErr);
-    }
-  }
 }
