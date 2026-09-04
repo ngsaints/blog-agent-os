@@ -13,8 +13,11 @@ const config = loadConfig();
 
 const missing = validateConfig(config);
 if (missing.length > 0) {
+  const targetLocation = (config.isDenoDeploy || config.isServerless)
+    ? "nas variáveis de ambiente do Deno Deploy (Settings → Environment Variables para 'Production' e 'Preview')"
+    : "no arquivo .env";
   console.error(
-    `Configuração incompleta. Defina no .env: ${missing.join(", ")}`,
+    `Configuração incompleta. Defina ${targetLocation}: ${missing.join(", ")}`,
   );
   process.exit(1);
 }
@@ -82,6 +85,15 @@ startScheduler(config.runIntervalMinutes, store, runner);
 
 const handler = createHandler({ config, store, settings, openrouter, pexels, runner, chat });
 
-serveNode(handler, config.port, () => {
-  console.log(`Blog Agent OS → http://localhost:${config.port}/admin`);
-});
+const deno = (globalThis as unknown as {
+  Deno?: { serve?: (options: { port?: number; onListen?: () => void }, handler: (req: Request) => Promise<Response> | Response) => void };
+}).Deno;
+
+if (deno && typeof deno.serve === "function") {
+  deno.serve({ port: config.port }, handler);
+  console.log(`Blog Agent OS (Deno) → http://localhost:${config.port}/admin`);
+} else {
+  serveNode(handler, config.port, () => {
+    console.log(`Blog Agent OS (Node) → http://localhost:${config.port}/admin`);
+  });
+}

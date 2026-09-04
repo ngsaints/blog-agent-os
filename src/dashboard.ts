@@ -266,18 +266,54 @@ tbody tr{transition:background .12s ease}tbody tr:hover{background:var(--c-bg)}
 .badge-silver{background:linear-gradient(135deg,#ffffff 0%,#e2e8f0 40%,#94a3b8 80%,#64748b 100%);box-shadow:0 10px 25px -2px rgba(148,163,184,.45)}
 .badge-bronze{background:linear-gradient(135deg,#ffedd5 0%,#fed7aa 35%,#d97706 75%,#9a3412 100%);box-shadow:0 10px 25px -2px rgba(217,119,6,.45)}
 .avatar-ring{display:inline-flex;border-radius:50%;padding:2px;background:linear-gradient(135deg,var(--c-accent),#7c3aed)}
-/* === Podium === */
-.podium-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;align-items:end;margin:22px 0 30px}
-.podium-card{position:relative;display:flex;flex-direction:column;align-items:center;text-align:center;padding:24px 18px 20px;border-radius:var(--radius-xl);background:var(--c-surface);border:1px solid var(--c-border);box-shadow:var(--shadow);transition:transform .2s ease,box-shadow .2s ease}
-.podium-card:hover{transform:translateY(-3px);box-shadow:var(--shadow-lg)}
-.podium-1st{order:2;border-color:rgba(245,158,11,.45);background:linear-gradient(180deg,#fef3c7 0%,var(--c-surface) 100%);padding-top:32px;box-shadow:0 16px 40px rgba(245,158,11,.18)}
-.podium-2nd{order:1;border-color:rgba(148,163,184,.4);background:linear-gradient(180deg,#f1f5f9 0%,var(--c-surface) 100%)}
-.podium-3rd{order:3;border-color:rgba(217,119,6,.35);background:linear-gradient(180deg,#ffedd5 0%,var(--c-surface) 100%)}
-.podium-rank-badge{position:absolute;top:-13px;display:inline-flex;align-items:center;gap:4px;padding:4px 12px;border-radius:999px;font-size:11.5px;font-weight:500;letter-spacing:.02em;color:#fff;box-shadow:0 6px 14px rgba(0,0,0,.16),inset 0 1px 0 rgba(255,255,255,.35)}
-.rank-gold{background:linear-gradient(135deg,#f59e0b,#d97706)}.rank-silver{background:linear-gradient(135deg,#64748b,#475569)}.rank-bronze{background:linear-gradient(135deg,#d97706,#9a3412)}
-.podium-name{font-size:14px;font-weight:500;margin:10px 0 4px;color:var(--c-text)}
-.podium-score{font-size:22px;font-weight:500;letter-spacing:-.02em;color:var(--c-text);margin:6px 0 2px}
-.podium-sub{font-size:11px;color:var(--c-text-muted)}
+/* === Ranking & Podium === */
+.ranking-hero{overflow:hidden;background:linear-gradient(145deg,#ffffff 0%,#fbfcfe 58%,#fffaf1 100%);border-color:rgba(148,163,184,.18);box-shadow:0 20px 60px rgba(30,41,59,.08)}
+.ranking-hero::before{content:"";position:absolute;width:360px;height:360px;right:-140px;top:-190px;border-radius:50%;background:radial-gradient(circle,rgba(148,163,184,.14),rgba(148,163,184,0) 68%);pointer-events:none}
+.ranking-hero::after{content:"";position:absolute;width:280px;height:280px;left:-130px;bottom:-190px;border-radius:50%;background:radial-gradient(circle,rgba(245,158,11,.14),rgba(245,158,11,0) 70%);pointer-events:none}
+.ranking-hero-head{display:flex;align-items:flex-start;justify-content:space-between;gap:24px;margin-bottom:22px;position:relative;z-index:1}
+.ranking-title-wrap{max-width:700px}
+.ranking-title{font-size:clamp(23px,3vw,34px)!important;font-weight:650!important;letter-spacing:-.04em;line-height:1.12;margin:5px 0 8px!important;color:#111827}
+.ranking-description{font-size:13.5px!important;line-height:1.55;max-width:650px}
+.ranking-live{display:inline-flex;align-items:center;gap:7px;padding:7px 11px;border-radius:999px;background:rgba(255,255,255,.72);border:1px solid rgba(148,163,184,.18);color:#475569;font-size:11px;font-weight:650;white-space:nowrap;box-shadow:0 8px 24px rgba(30,41,59,.06);backdrop-filter:blur(10px)}
+.ranking-live::before{content:"";width:7px;height:7px;border-radius:50%;background:#22c55e;box-shadow:0 0 0 4px rgba(34,197,94,.13)}
+.ranking-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:20px;position:relative;z-index:1}
+.ranking-stat{padding:13px 14px;border-radius:14px;background:rgba(255,255,255,.7);border:1px solid rgba(255,255,255,.9);box-shadow:0 8px 25px rgba(30,41,59,.05);backdrop-filter:blur(12px)}
+.ranking-stat-label{font-size:10.5px;text-transform:uppercase;letter-spacing:.08em;color:#7c8598;font-weight:650;margin-bottom:5px}
+.ranking-stat-value{font-size:20px;line-height:1;font-weight:700;letter-spacing:-.035em;color:#172033}
+.ranking-stat-value span{font-size:11px;font-weight:500;color:#8a93a5;letter-spacing:0;margin-left:3px}
+.podium-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;align-items:end;margin:30px 0 4px;position:relative;z-index:1}
+.podium-card{position:relative;display:flex;flex-direction:column;align-items:center;text-align:center;min-height:218px;padding:28px 18px 20px;border-radius:22px;background:rgba(255,255,255,.78);border:1px solid rgba(148,163,184,.18);box-shadow:0 16px 42px rgba(30,41,59,.08);transition:transform .25s cubic-bezier(.2,.8,.2,1),box-shadow .25s ease;backdrop-filter:blur(14px);box-sizing:border-box}
+.podium-card::after{content:"";position:absolute;inset:auto 24px 0;height:3px;border-radius:6px 6px 0 0;background:#94a3b8;opacity:.55}
+.podium-card:hover{transform:translateY(-6px);box-shadow:0 24px 54px rgba(30,41,59,.13)}
+.podium-1st{order:2;min-height:246px;padding-top:32px;border-color:rgba(245,158,11,.4);background:linear-gradient(155deg,#fffdf7 0%,#fff7dc 54%,#fffbeb 100%);box-shadow:0 24px 55px rgba(180,120,20,.16)}
+.podium-1st::before{content:"";position:absolute;inset:0;border-radius:inherit;background:radial-gradient(circle at 50% 0,rgba(251,191,36,.18),transparent 44%);pointer-events:none}
+.podium-1st::after{background:linear-gradient(90deg,#f59e0b,#fde68a);opacity:1;height:4px}
+.podium-2nd{order:1}.podium-2nd::after{background:linear-gradient(90deg,#94a3b8,#e2e8f0)}
+.podium-3rd{order:3}.podium-3rd::after{background:linear-gradient(90deg,#c26b35,#fdba74)}
+.podium-rank-badge{position:absolute;top:-14px;display:inline-flex;align-items:center;gap:5px;padding:6px 12px;border-radius:999px;font-size:10.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#fff;box-shadow:0 8px 20px rgba(15,23,42,.18),inset 0 1px 0 rgba(255,255,255,.3)}
+.rank-gold{background:linear-gradient(135deg,#fbbf24,#d97706)}.rank-silver{background:linear-gradient(135deg,#8390a3,#536176)}.rank-bronze{background:linear-gradient(135deg,#ea8a47,#a84316)}
+.podium-name{font-size:15px;font-weight:650;margin:12px 0 5px;color:#172033;letter-spacing:-.015em}
+.podium-1st .podium-name{color:#3f321b;font-size:18px}
+.podium-blog{display:inline-flex;align-items:center;gap:6px;margin-bottom:8px}
+.podium-1st .cat-chip{background:#fff8df!important;border-color:#f6d98c!important;color:#92400e!important}
+.podium-score{font-size:28px;font-weight:700;letter-spacing:-.045em;color:#172033;margin:7px 0 3px}
+.podium-score span{font-size:11px;font-weight:600;color:#8a93a5;letter-spacing:.02em;text-transform:uppercase}
+.podium-1st .podium-score{color:#a9480b;font-size:34px}.podium-1st .podium-score span{color:#b45309}
+.podium-sub{font-size:11px;line-height:1.45;color:#8a93a5}.podium-1st .podium-sub{color:#78350f}
+.ranking-table-card{padding:0;overflow:hidden;border-color:rgba(148,163,184,.17);box-shadow:0 16px 48px rgba(30,41,59,.07)}
+.ranking-table-head{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;padding:22px 24px 18px;border-bottom:1px solid rgba(148,163,184,.15)}
+.ranking-table-head .section-head{margin:0}
+.ranking-table-meta{font-size:11.5px;color:#8a93a5;white-space:nowrap}
+.ranking-table-wrap{padding:8px 14px 16px;overflow-x:auto}
+.ranking-table{border-collapse:separate;border-spacing:0 7px;min-width:1040px}
+.ranking-table th{border:0;padding:7px 12px;font-size:10px;text-transform:uppercase;letter-spacing:.065em;color:#929bad;font-weight:650}
+.ranking-table td{padding:11px 12px;background:#f8fafc;border-top:1px solid #eef1f5;border-bottom:1px solid #eef1f5;color:#5e687a}
+.ranking-table td:first-child{border-left:1px solid #eef1f5;border-radius:12px 0 0 12px}.ranking-table td:last-child{border-right:1px solid #eef1f5;border-radius:0 12px 12px 0}
+.ranking-table tr{transition:transform .16s ease,filter .16s ease}.ranking-table tbody tr:hover{transform:translateY(-2px);filter:drop-shadow(0 8px 10px rgba(30,41,59,.07))}
+.ranking-table tbody tr:first-child td{background:linear-gradient(90deg,#fffaf0,#fffdf8);border-color:#f8e7bc}
+.ranking-position{display:inline-grid;place-items:center;width:29px;height:29px;border-radius:9px;background:#eef2f7;color:#64748b;font-size:11px;font-weight:700}.ranking-position.is-top{background:#172033;color:#fff;box-shadow:0 6px 14px rgba(23,32,51,.16)}
+.ranking-agent-name{display:block;font-weight:650;color:#20293a;max-width:150px;overflow:hidden;text-overflow:ellipsis}.ranking-model{font-size:10px;color:#9aa2b1;max-width:150px;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+.ranking-number{font-variant-numeric:tabular-nums;font-weight:600;color:#374151}.ranking-number.primary{font-size:13px;color:#111827}
 /* === Avatar Picker === */
 .avatar-picker{display:flex;flex-wrap:wrap;gap:10px;margin-top:8px}
 .avatar-opt{cursor:pointer;border:2px solid transparent;border-radius:50%;padding:2px;transition:border-color .15s ease,transform .15s ease}
@@ -2000,7 +2036,7 @@ export function renderRankingTab(items: AgentRankingItem[], blogs: Blog[], selec
                 </span>
                 ${renderAvatar(second.agent.avatar, 68, "silver")}
                 <div class="podium-name">${escapeHtml(second.agent.name)}</div>
-                <div style="display:inline-flex;align-items:center;gap:6px;margin-bottom:6px">
+                <div class="podium-blog">
                   ${b2 ? renderBlogFavicon(b2.baseUrl, second.blogName, 22) : ""}
                   <span class="cat-chip">${escapeHtml(second.blogName)}</span>
                 </div>
@@ -2021,12 +2057,12 @@ export function renderRankingTab(items: AgentRankingItem[], blogs: Blog[], selec
                 </span>
                 ${renderAvatar(first.agent.avatar, 84, "gold")}
                 <div class="podium-name" style="font-size:18px">${escapeHtml(first.agent.name)}</div>
-                <div style="display:inline-flex;align-items:center;gap:6px;margin-bottom:6px">
+                <div class="podium-blog">
                   ${b1 ? renderBlogFavicon(b1.baseUrl, first.blogName, 24) : ""}
-                  <span class="cat-chip" style="background:#fef3c7;border-color:#fde68a;color:#92400e;font-weight:500">${escapeHtml(first.blogName)}</span>
+                  <span class="cat-chip">${escapeHtml(first.blogName)}</span>
                 </div>
-                <div class="podium-score" style="font-size:26px;color:#92400e">${first.totalViews.toLocaleString("pt-BR")} <span style="font-size:14px;font-weight:500;color:#b45309">views</span></div>
-                <div class="podium-sub" style="font-weight:500;color:#78350f">${first.views7d.toLocaleString("pt-BR")} views na semana • Score: ${first.roiScore.toLocaleString("pt-BR")} views/$</div>
+                <div class="podium-score">${first.totalViews.toLocaleString("pt-BR")} <span>views</span></div>
+                <div class="podium-sub">${first.views7d.toLocaleString("pt-BR")} views na semana • Score: ${first.roiScore.toLocaleString("pt-BR")} views/$</div>
               </div>`;
             })()
             : '<div class="empty" style="grid-column:1/-1">Nenhum agente para ranquear ainda.</div>'
@@ -2042,7 +2078,7 @@ export function renderRankingTab(items: AgentRankingItem[], blogs: Blog[], selec
                 </span>
                 ${renderAvatar(third.agent.avatar, 68, "bronze")}
                 <div class="podium-name">${escapeHtml(third.agent.name)}</div>
-                <div style="display:inline-flex;align-items:center;gap:6px;margin-bottom:6px">
+                <div class="podium-blog">
                   ${b3 ? renderBlogFavicon(b3.baseUrl, third.blogName, 22) : ""}
                   <span class="cat-chip">${escapeHtml(third.blogName)}</span>
                 </div>
@@ -2063,20 +2099,20 @@ export function renderRankingTab(items: AgentRankingItem[], blogs: Blog[], selec
   `;
 
   return `
-  <section class="card" style="margin-bottom:20px">
-    <div class="section-head">
+  <section class="card ranking-hero" style="margin-bottom:20px">
+    <div class="section-head ranking-hero-head">
       <div>
         <p class="eyebrow">Gamificação & Audiência</p>
-        <h2>Arena dos Agentes (Leaderboard de Desempenho)</h2>
-        <p class="muted">Os agentes competem em visualizações reais e analisam os artigos mais lidos para superarem seus próprios recordes.</p>
+        <h2 class="ranking-title">Arena dos Agentes <span style="color:#8b93a5;font-weight:450">— Leaderboard</span></h2>
+        <p class="muted ranking-description">Os agentes competem em visualizações reais e analisam os artigos mais lidos para superarem seus próprios recordes.</p>
       </div>
     </div>
     ${blogTabs}
     ${podiumHtml}
   </section>
 
-  <section class="card">
-    <div class="section-head">
+  <section class="card ranking-table-card">
+    <div class="section-head ranking-table-head">
       <div>
         <p class="eyebrow">Tabela Completa</p>
         <h2>Classificação Geral</h2>
@@ -2085,8 +2121,8 @@ export function renderRankingTab(items: AgentRankingItem[], blogs: Blog[], selec
     ${
       items.length === 0
         ? '<div class="empty">Nenhum dado de ranking registrado ainda.</div>'
-        : `<div class="audit-wrap">
-      <table class="table-stack">
+        : `<div class="audit-wrap ranking-table-wrap">
+      <table class="table-stack ranking-table">
         <thead>
           <tr>
             <th style="width:50px">Pos</th>
@@ -2108,13 +2144,13 @@ export function renderRankingTab(items: AgentRankingItem[], blogs: Blog[], selec
             const itBlog = blogs.find((b) => b.id === it.agent.blogId);
             return `
               <tr>
-                <td data-label="Pos"><span style="font-weight:500">#${it.rank}</span></td>
+                <td data-label="Pos"><span class="ranking-position ${it.rank <= 3 ? "is-top" : ""}">#${it.rank}</span></td>
                 <td data-label="Agente">
                   <div class="table-avatar-cell">
                     ${renderAvatar(it.agent.avatar, 42, rankRank)}
                     <div>
-                      <span style="font-weight:500">${escapeHtml(it.agent.name)}</span>
-                      <div class="muted" style="font-size:11px">${escapeHtml(it.agent.model)}</div>
+                      <span class="ranking-agent-name">${escapeHtml(it.agent.name)}</span>
+                      <div class="ranking-model">${escapeHtml(it.agent.model)}</div>
                     </div>
                   </div>
                 </td>
@@ -2125,12 +2161,12 @@ export function renderRankingTab(items: AgentRankingItem[], blogs: Blog[], selec
                   </div>
                 </td>
                 <td data-label="Papel"><span class="cat-chip" style="${it.agent.role === "reviewer" ? "background:#e8effd;color:#1d4ed8;" : it.agent.role === "image_creator" ? "background:#fdf2f8;color:#be185d;" : ""}">${it.agent.role === "reviewer" ? "Revisor" : it.agent.role === "image_creator" ? "Visual" : "Redator"}</span></td>
-                <td data-label="Posts">${it.totalPosts}</td>
-                <td data-label="Views Totais"><span style="font-weight:500">${it.totalViews.toLocaleString("pt-BR")}</span></td>
-                <td data-label="Views 7D">${it.views7d.toLocaleString("pt-BR")}</td>
-                <td data-label="Visitantes">${it.uniqueVisitors.toLocaleString("pt-BR")}</td>
-                <td data-label="Custo Total">$${it.totalCostUsd.toFixed(4)}</td>
-                <td data-label="Score ROI"><span style="font-weight:500">${it.roiScore.toLocaleString("pt-BR")}</span></td>
+                <td data-label="Posts"><span class="ranking-number">${it.totalPosts}</span></td>
+                <td data-label="Views Totais"><span class="ranking-number primary">${it.totalViews.toLocaleString("pt-BR")}</span></td>
+                <td data-label="Views 7D"><span class="ranking-number">${it.views7d.toLocaleString("pt-BR")}</span></td>
+                <td data-label="Visitantes"><span class="ranking-number">${it.uniqueVisitors.toLocaleString("pt-BR")}</span></td>
+                <td data-label="Custo Total"><span class="ranking-number">$${it.totalCostUsd.toFixed(4)}</span></td>
+                <td data-label="Score ROI"><span class="ranking-number primary">${it.roiScore.toLocaleString("pt-BR")}</span></td>
                 <td data-label="Destaque">${it.highlightBadge || "—"}</td>
               </tr>
             `;

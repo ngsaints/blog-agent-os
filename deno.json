@@ -1,6 +1,4 @@
 {
-  "name": "blog-agent-os",
-  "version": "0.1.0",
   "imports": {
     "@libsql/client/web": "npm:@libsql/client@0.14.0/web"
   },
