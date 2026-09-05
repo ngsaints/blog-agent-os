@@ -196,17 +196,18 @@ input[type=checkbox]{width:16px;min-height:16px;accent-color:var(--c-accent)}
 .check-group{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px 12px;margin-top:4px}
 /* === Agent Cards === */
 .agent-list{display:grid;gap:12px;min-width:0;width:100%}
-.agent{padding:18px;border:1px solid var(--c-border);border-radius:var(--radius-xl);background:var(--c-surface);box-shadow:var(--shadow-xs);transition:all .22s ease;position:relative;overflow:hidden}
+.agent{padding:14px 18px;border:1px solid var(--c-border);border-radius:var(--radius-lg);background:var(--c-surface);box-shadow:var(--shadow-xs);transition:all .22s ease;position:relative;overflow:hidden}
 .agent::before{content:"";position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--c-accent),var(--c-accent-hover));opacity:0;transition:opacity .25s}
-.agent:hover{transform:translateY(-3px);box-shadow:var(--shadow-lg);border-color:#d1d5de}
+.agent:hover{transform:translateY(-2px);box-shadow:var(--shadow-md);border-color:#d1d5de}
 .agent:hover::before{opacity:1}
-.agent-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;width:100%}
-.agent-title{display:flex;align-items:center;gap:12px;flex:1;min-width:200px}
-.agent-name{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:3px;font-size:14.5px;font-weight:500;letter-spacing:-.01em;color:var(--c-text)}
-.agent-desc{margin:0;color:var(--c-text-soft);font-size:12.5px;line-height:1.5}
-.agent-meta{display:flex;align-items:center;flex-wrap:wrap;gap:8px 16px;margin-top:12px;padding-top:12px;border-top:1px solid var(--c-border);color:var(--c-text-soft);font-size:12px;width:100%}
+.agent-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;width:100%}
+.agent-title{display:flex;align-items:center;gap:12px;flex:1;min-width:260px}
+.agent-title-info{flex:1;min-width:0}
+.agent-name{display:flex;align-items:center;flex-wrap:wrap;gap:6px 8px;margin-bottom:2px;font-size:14px;font-weight:600;letter-spacing:-.01em;color:var(--c-text)}
+.agent-desc{margin:0;color:var(--c-text-soft);font-size:12px;line-height:1.45;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;text-overflow:ellipsis;max-width:850px}
+.agent-meta{display:flex;align-items:center;flex-wrap:wrap;gap:6px 14px;margin-top:10px;padding-top:10px;border-top:1px solid var(--c-border);color:var(--c-text-soft);font-size:11.5px;width:100%}
 .agent-meta span{display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
-.agent-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;flex-shrink:0}
+.agent-actions{display:flex;align-items:center;gap:6px;flex-wrap:wrap;flex-shrink:0}
 .agent-actions form{display:inline-flex;margin:0}
 .agent-actions form,.agent-actions .button{width:auto}
 .agent-error{margin-top:10px;padding:10px 12px;border:1px solid #fecaca;border-radius:var(--radius-sm);background:var(--c-danger-soft);color:#b91c1c;font-size:12px;line-height:1.5;overflow-wrap:anywhere}
@@ -949,13 +950,15 @@ function agentCard(
       return `<span>Próxima: em ~${hours}h${mins > 0 ? `${mins}m` : ""} (às ${new Date(nextMs).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })})</span>`;
     })();
 
+    const descText = agent.description || (isReviewer ? "Agente de revisão editorial e SEO" : isVisual ? "Agente focado em criação de imagens de alta qualidade e Pins" : "Sem descrição");
+
     return `<div class="agent">
   <div class="agent-head">
-    <div class="agent-title" style="display:flex;align-items:center;gap:14px">
-      ${renderAvatar(agent.avatar, 48)}
-      <div>
+    <div class="agent-title">
+      ${renderAvatar(agent.avatar, 42)}
+      <div class="agent-title-info">
         <div class="agent-name">${escapeHtml(agent.name)} ${roleBadge} ${toolsBadge} ${sourceBadge} ${pill} ${runPill}</div>
-        <p class="agent-desc">${escapeHtml(agent.description || (isReviewer ? "Agente de revisão editorial e SEO" : isVisual ? "Agente focado em criação de imagens de alta qualidade e Pins" : "Sem descrição"))}</p>
+        <p class="agent-desc" title="${escapeHtml(descText)}">${escapeHtml(descText)}</p>
       </div>
     </div>
     <div class="agent-actions">
