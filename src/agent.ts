@@ -906,6 +906,7 @@ export async function runAgentOnce(
           user: buildUserPrompt(agent, topPosts, task, recentNews),
           maxTokens: agent.maxTokens,
           temperature: 0.85,
+          webSearch: true,
         }, "article_generation");
         article = parseArticleJson(completion.content);
         totalTokensIn = completion.promptTokens;
@@ -921,6 +922,7 @@ export async function runAgentOnce(
         user: buildUserPrompt(agent, topPosts, task, recentNews),
         maxTokens: agent.maxTokens,
         temperature: 0.85,
+        webSearch: Boolean(agent.toolsEnabled),
       }, "article_generation");
       article = parseArticleJson(completion.content);
       totalTokensIn = completion.promptTokens;

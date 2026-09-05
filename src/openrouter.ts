@@ -120,7 +120,15 @@ export class OpenRouterClient {
           ],
         };
         if (opts.webSearch) {
-          payload.plugins = [{ id: "web", max_results: 5 }];
+          payload.tools = [
+            {
+              type: "openrouter:web_search",
+              parameters: {
+                engine: "auto",
+                max_results: 5,
+              },
+            },
+          ];
         }
         const res = await fetch(CHAT_URL, {
           method: "POST",
@@ -133,6 +141,40 @@ export class OpenRouterClient {
         });
         if (!res.ok) {
           const body = await res.text();
+          // Fallback se o modelo ou provedor recusar server tools (status 400)
+          if (res.status === 400 && opts.webSearch && payload.tools) {
+            delete payload.tools;
+            const retryRes = await fetch(CHAT_URL, {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${key}`,
+                "X-OpenRouter-Title": this.appTitle,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify(payload),
+            });
+            if (retryRes.ok) {
+              const retryData = await readJson(retryRes);
+              const retryChoice = retryData.choices?.[0];
+              if (retryChoice) {
+                const usage = retryData.usage ?? {};
+                const promptTokens = usage.prompt_tokens ?? 0;
+                const completionTokens = usage.completion_tokens ?? 0;
+                const pricing = await this.getPricing(opts.model);
+                const cost = pricing
+                  ? promptTokens * pricing.prompt + completionTokens * pricing.completion +
+                    pricing.request
+                  : 0;
+                return {
+                  content: retryChoice.message?.content ?? "",
+                  model: retryData.model ?? opts.model,
+                  promptTokens,
+                  completionTokens,
+                  cost,
+                };
+              }
+            }
+          }
           throw new Error(`OpenRouter ${res.status}: ${body.slice(0, 300)}`);
         }
         const data = await readJson(res);

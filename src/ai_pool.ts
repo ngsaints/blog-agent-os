@@ -244,7 +244,15 @@ export class AiProviderPool {
     };
 
     if (opts.webSearch && config.provider === "openrouter") {
-      payload.plugins = [{ id: "web", max_results: 5 }];
+      payload.tools = [
+        {
+          type: "openrouter:web_search",
+          parameters: {
+            engine: "auto",
+            max_results: 5,
+          },
+        },
+      ];
     }
 
     const res = await fetch(endpoint, {
@@ -255,6 +263,28 @@ export class AiProviderPool {
 
     if (!res.ok) {
       const body = await res.text().catch(() => "");
+      if (res.status === 400 && opts.webSearch && payload.tools) {
+        delete payload.tools;
+        const retryRes = await fetch(endpoint, {
+          method: "POST",
+          headers,
+          body: JSON.stringify(payload),
+        });
+        if (retryRes.ok) {
+          const retryData = (await retryRes.json()) as any;
+          const retryChoice = retryData.choices?.[0];
+          if (retryChoice) {
+            const usage = retryData.usage ?? {};
+            return {
+              content: retryChoice.message?.content ?? "",
+              model: retryData.model ?? opts.model,
+              promptTokens: usage.prompt_tokens ?? 0,
+              completionTokens: usage.completion_tokens ?? 0,
+              cost: 0,
+            };
+          }
+        }
+      }
       throw new Error(`${config.provider} ${res.status}: ${body.slice(0, 300)}`);
     }
 
