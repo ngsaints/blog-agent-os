@@ -295,9 +295,18 @@ export class OpenRouterClient {
         if (!res.ok) {
           const body = await res.text();
           // Fallback se o modelo exigir resolução diferente ou omitir size
-          if (res.status === 400 && bodyPayload.size && (body.includes("size") || body.includes("pixels") || body.includes("output pixels"))) {
+          if (res.status === 400 && bodyPayload.size && (
+            body.includes("size") ||
+            body.includes("pixels") ||
+            body.includes("output pixels") ||
+            body.includes("resolution") ||
+            body.includes("dimension") ||
+            body.includes("aspect_ratio")
+          )) {
             if (body.includes("2048x2048")) {
               bodyPayload.size = "2048x2048";
+            } else if (body.includes("1024x1024")) {
+              bodyPayload.size = "1024x1024";
             } else {
               delete bodyPayload.size;
             }

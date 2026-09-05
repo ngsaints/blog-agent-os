@@ -662,24 +662,27 @@ Desenvolva uma introdução envolvente (<p>), 4 a 6 seções aprofundadas com su
       const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
       const prompt = String(body?.prompt ?? "").trim();
       const model = String(body?.model ?? "google/gemini-2.5-flash-image").trim();
+      const rawAr = String(body?.aspectRatio ?? body?.aspect_ratio ?? "16:9").trim();
+      const aspectRatio = (rawAr === "9:16" || rawAr === "16:9" || rawAr === "1:1") ? rawAr : "16:9";
+      const blogId = Number(body?.blog_id ?? 0);
       if (!prompt) return json({ error: "Prompt obrigatorio." }, 400);
       try {
         const imageResult = await ctx.openrouter.generateImage(
           prompt,
           model,
-          "1:1",
+          aspectRatio,
         );
         if (!imageResult || !imageResult.bytes) {
           return json({ error: "Falha ao gerar imagem." }, 500);
         }
-        // Upload to blog - use first available blog
+        // Upload to blog - use selected blog or first available blog
         const blogs = await ctx.store.listBlogs();
-        if (blogs.length === 0) {
+        const blog = (blogId > 0 ? await ctx.store.getBlog(blogId) : null) || blogs[0];
+        if (!blog) {
           // Return base64 data URL if no blog is configured
           const b64 = btoa(String.fromCharCode(...imageResult.bytes));
           return json({ url: `data:${imageResult.type};base64,${b64}`, note: "Sem blog configurado. Use o data URL temporario." });
         }
-        const blog = blogs[0];
         const blogClient = new BlogApiClient(blog.baseUrl, blog.token);
         const filename = `ai-cover-${Date.now()}.${imageResult.type.includes("png") ? "png" : "jpg"}`;
         const uploadedUrl = await blogClient.uploadImage(imageResult.bytes, filename, imageResult.type);
@@ -718,12 +721,18 @@ Desenvolva uma introdução envolvente (<p>), 4 a 6 seções aprofundadas com su
       if (!(await isAuthenticated(req, ctx.config))) return json({ error: "auth" }, 401);
       const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
       const query = String(body?.query ?? "").trim();
+      const rawOri = String(body?.orientation ?? "landscape");
+      const orientation = (rawOri === "portrait" || rawOri === "square" || rawOri === "landscape") ? rawOri : "landscape";
       if (!query) return json({ error: "Termo de busca obrigatório." }, 400);
       try {
-        const photos = await ctx.pexels.searchPhotos(query, "landscape", 8);
+        const photos = await ctx.pexels.searchPhotos(query, orientation, 8);
         const mapped = photos.map((p) => ({
           id: p.id,
-          url: p.src.landscape || p.src.large || p.src.medium,
+          url: orientation === "portrait"
+            ? (p.src.portrait || p.src.large || p.src.medium)
+            : orientation === "square"
+            ? (p.src.medium || p.src.large)
+            : (p.src.landscape || p.src.large || p.src.medium),
           alt: p.alt || p.photographer,
           photographer: p.photographer,
         }));

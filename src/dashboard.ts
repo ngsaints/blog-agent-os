@@ -3161,7 +3161,12 @@ export function renderCreatePostTab(data: DashboardData): string {
         <!-- Tab 3: Pexels Stock -->
         <div id="side-panel-pexels" class="side-panel" style="display:none">
           <div style="display:flex;gap:6px;margin-bottom:10px">
-            <input id="pexels-search-input" placeholder="Pesquisar fotos no Pexels..." style="height:36px;font-size:12.5px">
+            <input id="pexels-search-input" placeholder="Pesquisar fotos no Pexels..." style="height:36px;font-size:12.5px;flex:1">
+            <select id="pexels-orientation" style="height:36px;font-size:12px;padding:0 8px;border-radius:var(--radius-sm);border:1px solid var(--c-border);background:var(--c-surface);color:var(--c-text)" title="Formato da foto Pexels">
+              <option value="landscape" selected>16:9 (Horizontal)</option>
+              <option value="square">1:1 (Quadrado)</option>
+              <option value="portrait">9:16 (Vertical)</option>
+            </select>
             <button type="button" class="button button-sm" id="btn-pexels-search">Buscar</button>
           </div>
           <div id="pexels-status"></div>
@@ -3179,6 +3184,14 @@ export function renderCreatePostTab(data: DashboardData): string {
             <div>
               <label for="model-cb-img-model" style="font-size:12px;font-weight:500;margin-bottom:4px;display:block">Modelo de Imagem (Digite para pesquisar)</label>
               ${modelCombobox("img-model", "image_model", imageModel, models, true)}
+            </div>
+            <div>
+              <label for="img-aspect-ratio" style="font-size:12px;font-weight:500;margin-bottom:4px;display:block">Formato / Proporção da Imagem</label>
+              <select id="img-aspect-ratio" style="font-size:13px;width:100%;height:38px;padding:6px 10px;border-radius:var(--radius-sm);border:1px solid var(--c-border);background:var(--c-surface);color:var(--c-text)">
+                <option value="16:9" selected>16:9 (Horizontal / Capa Widescreen)</option>
+                <option value="1:1">1:1 (Quadrado / Feed / Card)</option>
+                <option value="9:16">9:16 (Vertical / Stories / Pinterest)</option>
+              </select>
             </div>
             <button type="button" class="button" id="btn-generate-image" style="width:100%;height:40px">Gerar Imagem com IA</button>
           </div>
@@ -3835,7 +3848,8 @@ export function renderCreatePostTab(data: DashboardData): string {
       pStatus.innerHTML = '<div class="gen-loading"><div class="spinner"></div>Buscando no Pexels...</div>';
       pGrid.innerHTML = "";
 
-      api("/admin/create-post/search-pexels", { query: q }).then(function(res){
+      var ori = document.getElementById("pexels-orientation") ? document.getElementById("pexels-orientation").value : "landscape";
+      api("/admin/create-post/search-pexels", { query: q, orientation: ori }).then(function(res){
         pStatus.innerHTML = "";
         if (res.error) {
           pStatus.innerHTML = '<span style="color:var(--c-danger);font-size:12px">' + res.error + '</span>';
@@ -3888,15 +3902,17 @@ export function renderCreatePostTab(data: DashboardData): string {
     bI.addEventListener("click", function(){
       var p = document.getElementById("img-prompt") ? document.getElementById("img-prompt").value.trim() : "";
       var m = document.getElementById("img-model") ? document.getElementById("img-model").value : "";
+      var ar = document.getElementById("img-aspect-ratio") ? document.getElementById("img-aspect-ratio").value : "16:9";
+      var bId = bs ? parseInt(bs.value) || 0 : 0;
       if (!p) {
         iS.innerHTML = '<span style="color:var(--c-danger);font-size:12px">Descreva a imagem.</span>';
         return;
       }
-      iS.innerHTML = '<div class="gen-loading"><div class="spinner"></div>Gerando imagem...</div>';
+      iS.innerHTML = '<div class="gen-loading"><div class="spinner"></div>Gerando imagem (' + ar + ')...</div>';
       iR.style.display = "none";
       lastImg = null;
 
-      api("/admin/create-post/generate-image", { prompt: p, model: m }).then(function(r){
+      api("/admin/create-post/generate-image", { prompt: p, model: m, aspectRatio: ar, blog_id: bId }).then(function(r){
         iS.innerHTML = "";
         if (r.error) {
           iS.innerHTML = '<span style="color:var(--c-danger);font-size:12px">' + r.error + '</span>';
@@ -3955,7 +3971,8 @@ export function renderCreatePostTab(data: DashboardData): string {
         s.innerHTML = '<span style="color:var(--c-danger);font-weight:500">' + r.error + '</span>';
       } else {
         var blogObj = blogs.find(function(b){ return b.id === p.blog_id; });
-        var viewUrl = blogObj && r.slug ? blogObj.baseUrl.replace(/\\/api\\/cli\\/?$/, "") + "/" + r.slug : null;
+        var cleanSlug = String(r.slug || "").replace(/^\/+/, "");
+        var viewUrl = blogObj && cleanSlug ? blogObj.baseUrl.replace(/\/api\/cli\/?$/, "") + "/post/" + cleanSlug : null;
         s.innerHTML = '<div style="padding:12px;background:var(--c-success-soft);border:1px solid rgba(34,197,94,.3);border-radius:var(--radius);color:var(--c-success);font-weight:500;display:flex;align-items:center;justify-content:space-between;gap:8px">' +
           '<span>Post #' + r.id + ' ' + (ispub ? 'publicado' : 'salvo como rascunho') + ' com sucesso.</span>' +
           (viewUrl ? '<a href="' + viewUrl + '" target="_blank" rel="noopener" class="button button-xs button-secondary" style="color:var(--c-accent)">Abrir no Blog</a>' : '') +
