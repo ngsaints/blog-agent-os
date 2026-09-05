@@ -6,6 +6,7 @@ import type { SettingsService } from "./settings.ts";
 import { systemLogger } from "./logger.ts";
 import { OpenRouter as AgentSdkOpenRouter, tool, stepCountIs, maxCost } from "@openrouter/agent";
 import { z } from "zod";
+import { fetchMultiFeedRadar } from "./rss.ts";
 
 export interface Article {
   title: string;
@@ -853,15 +854,45 @@ export async function runAgentOnce(
     if (agent.toolsEnabled) {
       try {
         runLog.step("Pesquisando notícias de última hora para embasar a pauta...");
-        const newsQuery = task?.trim() || agent.description?.trim() || "tecnologia inovacao inteligencia artificial";
-        recentNews = await fetchRecentNews(newsQuery, 5);
+        // 1. Consultar biblioteca de fontes RSS ativas da categoria
+        try {
+          const rssSources = await store.listRssSources(agent.categoryId);
+          const activeRss = rssSources.filter((s) => s.isActive);
+          if (activeRss.length > 0) {
+            runLog.info(`Consultando ${activeRss.length} fontes RSS ativas cadastradas para a categoria...`);
+            const feedArticles = await fetchMultiFeedRadar(activeRss, 6);
+            for (const art of feedArticles) {
+              recentNews.push({
+                title: art.title,
+                source: art.source,
+                pubDate: art.pubDate,
+                link: art.link,
+              });
+            }
+          }
+        } catch (rssErr) {
+          runLog.warn(`Erro ao consultar biblioteca RSS: ${rssErr instanceof Error ? rssErr.message : rssErr}`);
+        }
+
+        // 2. Complementar com Google News RSS em tempo real se necessário
+        if (recentNews.length < 3) {
+          const newsQuery = task?.trim() || agent.description?.trim() || "tecnologia inovacao inteligencia artificial";
+          const googleNews = await fetchRecentNews(newsQuery, 5);
+          for (const item of googleNews) {
+            if (!recentNews.some((rn) => rn.title.slice(0, 30).toLowerCase() === item.title.slice(0, 30).toLowerCase())) {
+              recentNews.push(item);
+            }
+          }
+        }
+
         if (recentNews.length > 0) {
+          recentNews = recentNews.slice(0, 6);
           runLog.info(
             `Notícias quentes em tempo real obtidas (${recentNews.length} fontes)`,
             recentNews.map((n) => `• [${n.source}] ${n.title} (${n.pubDate})`).join("\n"),
           );
         } else {
-          runLog.info("Nenhuma notícia em tempo real encontrada no feed direto; o agente usará busca autônoma se necessário.");
+          runLog.info("Nenhuma notícia em tempo real encontrada nos feeds diretos; o agente usará busca autônoma se necessário.");
         }
       } catch (newsErr) {
         runLog.warn(`Feed de notícias em tempo real indisponível: ${newsErr instanceof Error ? newsErr.message : newsErr}`);

@@ -14,12 +14,14 @@ import {
   type ChatConversation,
   type ChatMessage,
   type ListChatMessagesOptions,
+  type RssSource,
   type Run,
   type RunFinishFields,
   type SqlStore,
   type Stats,
   toAgent,
   toBlog,
+  toRssSource,
   toRun,
 } from "./turso_store.ts";
 
@@ -150,6 +152,15 @@ export class LocalSqliteStore implements SqlStore {
         created_at TEXT NOT NULL
       );
       CREATE INDEX IF NOT EXISTS idx_chat_messages_conv ON chat_messages(conversation_id, id);
+      CREATE TABLE IF NOT EXISTS rss_sources (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        url TEXT NOT NULL,
+        category_id INTEGER NOT NULL DEFAULT 1,
+        is_active INTEGER NOT NULL DEFAULT 1,
+        created_at TEXT NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_rss_sources_cat ON rss_sources(category_id, is_active);
     `);
     try {
       this.db.prepare("UPDATE runs SET status = 'error', error = 'Execução interrompida por reinício' WHERE status = 'running'").run();
@@ -205,6 +216,26 @@ export class LocalSqliteStore implements SqlStore {
       this.db.exec(`ALTER TABLE runs ADD COLUMN logs TEXT`);
     } catch {
       // coluna já existe
+    }
+    try {
+      const checkRss = this.db.prepare(`SELECT COUNT(*) as count FROM rss_sources`).get() as any;
+      const count = Number(checkRss?.count ?? 0);
+      if (count === 0) {
+        const now = new Date().toISOString();
+        const defaultSources = [
+          { name: "Canaltech", url: "https://canaltech.com.br/rss/", categoryId: 1 },
+          { name: "G1 Tecnologia", url: "https://g1.globo.com/rss/g1/tecnologia/", categoryId: 1 },
+          { name: "TecMundo", url: "https://rss.tecmundo.com.br/feed", categoryId: 1 },
+          { name: "Olhar Digital", url: "https://olhardigital.com.br/feed/", categoryId: 1 },
+          { name: "Google Notícias Tecnologia", url: "https://news.google.com/rss/headlines/section/topic/TECHNOLOGY?hl=pt-BR&gl=BR&ceid=BR:pt-419", categoryId: 1 },
+        ];
+        const insertStmt = this.db.prepare(`INSERT INTO rss_sources (name, url, category_id, is_active, created_at) VALUES (?, ?, ?, 1, ?)`);
+        for (const s of defaultSources) {
+          insertStmt.run(s.name, s.url, s.categoryId, now);
+        }
+      }
+    } catch {
+      // ignore
     }
   }
 
@@ -609,5 +640,36 @@ export class LocalSqliteStore implements SqlStore {
         VALUES (?, ?, ?, ?)`,
     ).run(conversationId, role, content, new Date().toISOString());
     return num(res.lastInsertRowid);
+  }
+
+  async listRssSources(categoryId?: number): Promise<RssSource[]> {
+    if (typeof categoryId === "number") {
+      const rows = this.db.prepare(
+        `SELECT * FROM rss_sources WHERE category_id = ? ORDER BY id ASC`,
+      ).all(categoryId);
+      return (rows as Row[]).map((r) => toRssSource(r));
+    }
+    const rows = this.db.prepare(
+      `SELECT * FROM rss_sources ORDER BY category_id ASC, id ASC`,
+    ).all();
+    return (rows as Row[]).map((r) => toRssSource(r));
+  }
+
+  async addRssSource(name: string, url: string, categoryId = 1): Promise<number> {
+    const now = new Date().toISOString();
+    const res = this.db.prepare(
+      `INSERT INTO rss_sources (name, url, category_id, is_active, created_at)
+        VALUES (?, ?, ?, 1, ?)`,
+    ).run(name.trim(), url.trim(), categoryId, now);
+    return num(res.lastInsertRowid);
+  }
+
+  async toggleRssSource(id: number, isActive: boolean): Promise<void> {
+    this.db.prepare(`UPDATE rss_sources SET is_active = ? WHERE id = ?`)
+      .run(isActive ? 1 : 0, id);
+  }
+
+  async deleteRssSource(id: number): Promise<void> {
+    this.db.prepare(`DELETE FROM rss_sources WHERE id = ?`).run(id);
   }
 }

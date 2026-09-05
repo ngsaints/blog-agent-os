@@ -1,4 +1,4 @@
-import type { Agent, Blog, DatabaseUsageMetrics, Run, Stats } from "./turso_store.ts";
+import type { Agent, Blog, DatabaseUsageMetrics, RssSource, Run, Stats } from "./turso_store.ts";
 import type { PanelSettings } from "./settings.ts";
 import type { ModelInfo } from "./openrouter.ts";
 import type { CategoryInfo } from "./blog_api.ts";
@@ -459,8 +459,25 @@ tbody tr{transition:background .12s ease}tbody tr:hover{background:var(--c-bg)}
 .log-inspect-btn:hover{background:#007aff;color:#fff}
 .log-inspect-btn.btn-error{background:rgba(239,68,68,.08);color:#dc2626;border-color:rgba(239,68,68,.2)}
 .log-inspect-btn.btn-error:hover{background:#dc2626;color:#fff}
-
-
+/* === RSS Library & Radar === */
+.rss-layout{display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:20px;align-items:start}
+@media(max-width:1024px){.rss-layout{grid-template-columns:1fr}}
+.rss-radar-card{background:var(--c-surface);border:1px solid var(--c-border);border-radius:var(--radius);padding:16px;margin-bottom:12px;transition:transform .15s ease,box-shadow .15s ease,border-color .15s ease;box-shadow:var(--shadow-xs)}
+.rss-radar-card:hover{transform:translateY(-1.5px);box-shadow:var(--shadow-md);border-color:rgba(0,0,0,.15)}
+.rss-source-item{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;background:var(--c-bg);border:1px solid var(--c-border-light);border-radius:var(--radius-sm);margin-bottom:8px;transition:border-color .15s ease}
+.rss-source-item:hover{border-color:var(--c-border)}
+.rss-source-info{min-width:0;flex:1}
+.rss-source-name{font-weight:600;font-size:13px;color:var(--c-text);display:flex;align-items:center;gap:6px}
+.rss-source-url{font-size:11.5px;color:var(--c-text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:2px}
+.rss-filter-btn{padding:5px 12px;border-radius:999px;font-size:12px;font-weight:500;border:1px solid var(--c-border);background:var(--c-surface);color:var(--c-text-soft);cursor:pointer;transition:all .15s ease}
+.rss-filter-btn:hover{background:var(--c-bg);color:var(--c-text)}
+.rss-filter-btn.active{background:var(--c-text);color:#fff;border-color:var(--c-text)}
+.switch-toggle{position:relative;display:inline-block;width:34px;height:20px;flex-shrink:0}
+.switch-toggle input{opacity:0;width:0;height:0}
+.switch-slider{position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background-color:#cbd5e1;transition:.2s;border-radius:20px}
+.switch-slider:before{position:absolute;content:"";height:14px;width:14px;left:3px;bottom:3px;background-color:white;transition:.2s;border-radius:50%;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.switch-toggle input:checked + .switch-slider{background-color:var(--c-success)}
+.switch-toggle input:checked + .switch-slider:before{transform:translateX(14px)}
 `;
 
 function html(body: string, status = 200): Response {
@@ -689,6 +706,7 @@ export interface DashboardData {
   isDenoDeploy?: boolean;
   cronUrl?: string;
   hasCronToken?: boolean;
+  rssSources?: RssSource[];
 }
 
 export function dashboardPage(data: DashboardData): Response {
@@ -722,6 +740,10 @@ export function dashboardPage(data: DashboardData): Response {
       <button class="main-nav-btn ${activeTab === "create-post" ? "active" : ""}" data-tab="create-post">
         <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
         Criar Post
+      </button>
+      <button class="main-nav-btn ${activeTab === "rss" ? "active" : ""}" data-tab="rss">
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11a9 9 0 0 1 9 9"/><path d="M4 4a16 16 0 0 1 16 16"/><circle cx="5" cy="19" r="1"/></svg>
+        Fontes RSS &amp; Radar
       </button>
       <button class="main-nav-btn ${activeTab === "ranking" ? "active" : ""}" data-tab="ranking">
         <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m2 4 3 12h14l3-12-6 7-4-7-4 7-6-7zm3 16h14"/></svg>
@@ -806,6 +828,10 @@ export function dashboardPage(data: DashboardData): Response {
     ${renderCreatePostTab(data)}
   </div>
 
+  <div id="tab-rss" class="tab-pane ${activeTab === "rss" ? "active" : ""}">
+    ${renderRssTab(data.rssSources || [], data.blogs)}
+  </div>
+
   <div id="tab-ranking" class="tab-pane ${activeTab === "ranking" ? "active" : ""}">
     ${renderRankingTab(data.rankingItems || [], data.blogs, data.selectedBlogId ?? null)}
   </div>
@@ -834,6 +860,7 @@ ${blogCategoryJs(data.blogs, data.categoriesByBlog)}
 ${allRunsModalJs()}
 ${logsTabJs()}
 ${runDetailsModalJs()}
+${rssTabJs()}
 <script>
 (function(){
   var initialUrl = new URL(window.location);
@@ -3558,6 +3585,387 @@ export function renderCreatePostTab(data: DashboardData): string {
         setCoverImage("");
         updateMetrics();
       }
+    });
+  }
+})();
+</script>`;
+}
+
+export function renderRssSourcesList(sources: RssSource[]): string {
+  if (sources.length === 0) {
+    return `<div style="text-align:center;padding:24px;color:var(--c-text-muted);font-size:13px">Nenhuma fonte cadastrada ainda.</div>`;
+  }
+
+  return sources.map((s) => {
+    const domain = (() => {
+      try { return new URL(s.url).hostname.replace(/^www\./, ""); } catch { return s.url; }
+    })();
+    const cat = categoryName(s.categoryId);
+
+    return `
+    <div class="rss-source-item" id="rss-source-${s.id}">
+      <div class="rss-source-info">
+        <div class="rss-source-name">
+          <span>${escapeHtml(s.name)}</span>
+          <span class="status-pill" style="font-size:10px;padding:2px 6px">${escapeHtml(cat)}</span>
+        </div>
+        <div class="rss-source-url" title="${escapeHtml(s.url)}">${escapeHtml(domain)}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;flex-shrink:0">
+        <label class="switch-toggle" title="${s.isActive ? "Desativar fonte" : "Ativar fonte"}">
+          <input type="checkbox" ${s.isActive ? "checked" : ""} onchange="toggleRssSource(${s.id}, this.checked)">
+          <span class="switch-slider"></span>
+        </label>
+        <button type="button" onclick="deleteRssSource(${s.id})" title="Excluir fonte" style="color:var(--c-text-muted);padding:4px;cursor:pointer;border-radius:4px;transition:color .15s ease" onmouseover="this.style.color='var(--c-danger)'" onmouseout="this.style.color='var(--c-text-muted)'">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+        </button>
+      </div>
+    </div>`;
+  }).join("");
+}
+
+export function renderRssTab(sources: RssSource[], _blogs: Blog[]): string {
+  const activeCount = sources.filter((s) => s.isActive).length;
+  return `
+  <div class="card" style="padding:22px;margin-bottom:20px">
+    <div class="section-head" style="margin-bottom:0">
+      <div>
+        <p class="eyebrow">Inteligência Editorial &amp; Tempo Real</p>
+        <h2>Biblioteca de Fontes RSS &amp; Radar de Pautas</h2>
+        <p class="muted">Curadoria de feeds jornalísticos e portais de referência. O agente consulta estas fontes ativas automaticamente a cada ciclo para garantir temas reais e inéditos.</p>
+      </div>
+      <div class="section-actions">
+        <button type="button" class="button button-sm button-secondary" id="btn-refresh-rss-radar" onclick="loadRssRadar()" style="display:inline-flex;align-items:center;gap:6px">
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+          Atualizar Radar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="rss-layout">
+    <!-- Coluna 1: Radar de Notícias em Tempo Real -->
+    <div style="min-width:0;display:flex;flex-direction:column;gap:16px">
+      <div class="card" style="padding:20px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span class="pulse-dot" style="background:#10b981"></span>
+            <h3 style="font-size:14px;font-weight:600;margin:0">Radar de Notícias Ao Vivo</h3>
+            <span id="rss-radar-count" class="status-pill" style="font-size:11px">Carregando...</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap" id="rss-radar-filters">
+            <button type="button" class="rss-filter-btn active" data-cat="" onclick="filterRadarCat('')">Todas</button>
+            <button type="button" class="rss-filter-btn" data-cat="1" onclick="filterRadarCat('1')">Inteligência Artificial</button>
+            <button type="button" class="rss-filter-btn" data-cat="2" onclick="filterRadarCat('2')">Economia</button>
+            <button type="button" class="rss-filter-btn" data-cat="3" onclick="filterRadarCat('3')">Ganhar Dinheiro</button>
+            <button type="button" class="rss-filter-btn" data-cat="4" onclick="filterRadarCat('4')">Home Office</button>
+          </div>
+        </div>
+
+        <div id="rss-radar-list" style="display:flex;flex-direction:column">
+          <div style="text-align:center;padding:40px;color:var(--c-text-muted)">
+            <div style="display:inline-block;width:24px;height:24px;border:2px solid var(--c-border);border-top-color:var(--c-accent);border-radius:50%;animation:spin .8s linear infinite;margin-bottom:8px"></div>
+            <div>Sintonizando feeds ativos e carregando últimas notícias...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Coluna 2: Gerenciamento de Fontes RSS -->
+    <div style="min-width:0;display:flex;flex-direction:column;gap:16px">
+      <!-- Card Adicionar Fonte -->
+      <div class="card" style="padding:20px">
+        <div class="section-head" style="margin-bottom:14px">
+          <div>
+            <p class="eyebrow">Adicionar</p>
+            <h3 style="font-size:14px;font-weight:600">Nova Fonte RSS</h3>
+          </div>
+        </div>
+
+        <form id="rss-add-form" onsubmit="handleAddRssSource(event)" class="form-stack">
+          <div>
+            <label for="rss-name" style="font-size:12px;font-weight:500">Nome do Veículo / Feed</label>
+            <input id="rss-name" name="name" placeholder="Ex.: TechCrunch, MIT Technology Review" required style="font-size:13px;height:38px">
+          </div>
+
+          <div>
+            <label for="rss-url" style="font-size:12px;font-weight:500">URL do Feed (RSS ou Atom)</label>
+            <input id="rss-url" name="url" type="url" placeholder="https://exemplo.com/rss" required style="font-size:13px;height:38px">
+          </div>
+
+          <div>
+            <label for="rss-category" style="font-size:12px;font-weight:500">Categoria Editorial</label>
+            <select id="rss-category" name="category_id" style="font-size:13px;height:38px">
+              <option value="1">Inteligência Artificial</option>
+              <option value="2">Economia</option>
+              <option value="3">Ganhar Dinheiro</option>
+              <option value="4">Home Office</option>
+            </select>
+          </div>
+
+          <div style="margin-top:6px">
+            <button type="submit" class="button button-sm btn-primary" id="btn-submit-rss" style="width:100%;height:38px">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Cadastrar Fonte
+            </button>
+          </div>
+          <div id="rss-add-status" style="margin-top:4px"></div>
+        </form>
+      </div>
+
+      <!-- Card Lista de Fontes -->
+      <div class="card" style="padding:20px">
+        <div class="section-head" style="margin-bottom:14px">
+          <div>
+            <p class="eyebrow">Curadoria</p>
+            <h3 style="font-size:14px;font-weight:600">Fontes Cadastradas (<span id="rss-active-counter">${activeCount} ativas</span>)</h3>
+          </div>
+        </div>
+
+        <div id="rss-sources-list">
+          ${renderRssSourcesList(sources)}
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+export function rssTabJs(): string {
+  return `
+<script>
+(function(){
+  var currentRadarCat = "";
+  var radarArticles = [];
+
+  window.filterRadarCat = function(cat) {
+    currentRadarCat = cat;
+    document.querySelectorAll("#rss-radar-filters .rss-filter-btn").forEach(function(b){
+      b.classList.toggle("active", b.getAttribute("data-cat") === cat);
+    });
+    loadRssRadar();
+  };
+
+  window.loadRssRadar = function() {
+    var container = document.getElementById("rss-radar-list");
+    var counter = document.getElementById("rss-radar-count");
+    if (!container) return;
+
+    container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--c-text-muted)"><div style="display:inline-block;width:24px;height:24px;border:2px solid var(--c-border);border-top-color:var(--c-accent);border-radius:50%;animation:spin .8s linear infinite;margin-bottom:8px"></div><div>Sintonizando feeds ativos e carregando últimas notícias...</div></div>';
+
+    var url = new URL("/admin/api/rss-radar", window.location.origin);
+    if (currentRadarCat) url.searchParams.set("categoryId", currentRadarCat);
+
+    fetch(url.toString())
+      .then(function(res){ return res.json(); })
+      .then(function(data){
+        if (!data || !Array.isArray(data.articles)) {
+          container.innerHTML = '<div style="text-align:center;padding:30px;color:var(--c-text-muted)">Falha ao sincronizar o radar de notícias.</div>';
+          return;
+        }
+
+        radarArticles = data.articles;
+        if (counter) counter.textContent = data.articles.length + " notícias";
+
+        if (data.articles.length === 0) {
+          container.innerHTML = '<div style="text-align:center;padding:36px;color:var(--c-text-muted);font-size:13px">Nenhuma notícia encontrada nas fontes ativas desta categoria. Cadastre novas fontes ou ative feeds ao lado.</div>';
+          return;
+        }
+
+        var html = data.articles.map(function(art, idx){
+          var safeTitle = (art.title || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+          var safeSnippet = (art.snippet || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+          var safeSource = (art.source || "Feed RSS").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+          var safeLink = art.link || "#";
+          var dateStr = art.pubDate ? formatDateFriendly(art.pubDate) : "Recente";
+
+          return '<div class="rss-radar-card">' +
+            '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;flex-wrap:wrap">' +
+              '<div style="display:flex;align-items:center;gap:6px">' +
+                '<span class="status-pill status-pill-active" style="font-size:10px;padding:2px 7px">' + safeSource + '</span>' +
+                '<span style="font-size:11.5px;color:var(--c-text-muted)">' + dateStr + '</span>' +
+              '</div>' +
+              (art.link ? '<a href="' + safeLink + '" target="_blank" rel="noopener" class="button button-xs button-secondary" style="display:inline-flex;align-items:center;gap:4px;color:var(--c-accent)" title="Abrir notícia original">' +
+                '<span>Ver Original</span>' +
+                '<svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>' +
+              '</a>' : '') +
+            '</div>' +
+            '<h4 style="font-size:14px;font-weight:650;line-height:1.35;margin:0 0 6px;color:var(--c-text)">' + safeTitle + '</h4>' +
+            (safeSnippet ? '<p style="font-size:12.5px;line-height:1.5;color:var(--c-text-soft);margin:0 0 12px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">' + safeSnippet + '</p>' : '') +
+            '<div style="display:flex;align-items:center;justify-content:flex-end;gap:8px">' +
+              '<button type="button" class="button button-xs button-secondary" onclick="createPostFromRadar(' + idx + ')" style="display:inline-flex;align-items:center;gap:5px;font-weight:500">' +
+                '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>' +
+                'Criar Artigo com esta Pauta' +
+              '</button>' +
+            '</div>' +
+          '</div>';
+        }).join("");
+
+        container.innerHTML = html;
+      })
+      .catch(function(err){
+        container.innerHTML = '<div style="text-align:center;padding:30px;color:var(--c-danger)">Erro ao carregar notícias: ' + err.message + '</div>';
+      });
+  };
+
+  function formatDateFriendly(d) {
+    try {
+      var date = new Date(d);
+      if (isNaN(date.getTime())) return d;
+      var now = new Date();
+      var diffMs = now.getTime() - date.getTime();
+      var diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+      if (diffHours < 1) {
+        var diffMin = Math.max(1, Math.floor(diffMs / (1000 * 60)));
+        return "Há " + diffMin + " min";
+      }
+      if (diffHours < 24) return "Há " + diffHours + " h";
+      var diffDays = Math.floor(diffHours / 24);
+      if (diffDays === 1) return "Ontem";
+      if (diffDays < 7) return "Há " + diffDays + " dias";
+      return date.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" });
+    } catch(e) {
+      return d;
+    }
+  }
+
+  window.createPostFromRadar = function(idx) {
+    var art = radarArticles[idx];
+    if (!art) return;
+    switchTab("create-post");
+    var titleInput = document.getElementById("post-title");
+    if (titleInput) {
+      titleInput.value = art.title;
+      titleInput.dispatchEvent(new Event("input"));
+    }
+    var genPrompt = document.getElementById("gen-prompt");
+    if (genPrompt) {
+      genPrompt.value = "Escreva um artigo jornalístico completo, analítico e envolvente sobre a notícia de última hora: \\"" + art.title + "\\". Fonte de referência: " + art.source + (art.snippet ? " (" + art.snippet + ")" : "") + ". Baseie-se nos fatos reais e desenvolva insights práticos para o público.";
+    }
+    if (currentRadarCat) {
+      var catSelect = document.getElementById("post-category");
+      if (catSelect) catSelect.value = String(currentRadarCat);
+    }
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  window.toggleRssSource = function(id, isActive) {
+    fetch("/admin/api/rss-sources/" + id + "/toggle", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ isActive: isActive })
+    }).then(function(res){ return res.json(); }).then(function(){
+      loadRssRadar();
+    });
+  };
+
+  window.deleteRssSource = function(id) {
+    if (!confirm("Deseja realmente remover esta fonte RSS da biblioteca?")) return;
+    fetch("/admin/api/rss-sources/" + id, {
+      method: "DELETE"
+    }).then(function(res){ return res.json(); }).then(function(){
+      var el = document.getElementById("rss-source-" + id);
+      if (el) el.remove();
+      loadRssRadar();
+    });
+  };
+
+  window.handleAddRssSource = function(e) {
+    e.preventDefault();
+    var nameInput = document.getElementById("rss-name");
+    var urlInput = document.getElementById("rss-url");
+    var catSelect = document.getElementById("rss-category");
+    var status = document.getElementById("rss-add-status");
+    var btn = document.getElementById("btn-submit-rss");
+
+    var name = nameInput ? nameInput.value.trim() : "";
+    var url = urlInput ? urlInput.value.trim() : "";
+    var categoryId = catSelect ? parseInt(catSelect.value) || 1 : 1;
+
+    if (!name || !url) return;
+    if (btn) btn.disabled = true;
+    if (status) status.innerHTML = '<span style="color:var(--c-text-muted)">Cadastrando fonte...</span>';
+
+    fetch("/admin/api/rss-sources", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: name, url: url, categoryId: categoryId })
+    })
+      .then(function(res){ return res.json(); })
+      .then(function(data){
+        if (btn) btn.disabled = false;
+        if (data.error) {
+          if (status) status.innerHTML = '<span style="color:var(--c-danger)">' + data.error + '</span>';
+        } else {
+          if (status) status.innerHTML = '<span style="color:var(--c-success);font-weight:500">Fonte cadastrada com sucesso!</span>';
+          if (nameInput) nameInput.value = "";
+          if (urlInput) urlInput.value = "";
+          setTimeout(function(){ if (status) status.innerHTML = ""; }, 3000);
+          refreshSourcesList();
+          loadRssRadar();
+        }
+      })
+      .catch(function(err){
+        if (btn) btn.disabled = false;
+        if (status) status.innerHTML = '<span style="color:var(--c-danger)">Erro: ' + err.message + '</span>';
+      });
+  };
+
+  function refreshSourcesList() {
+    fetch("/admin/api/rss-sources")
+      .then(function(res){ return res.json(); })
+      .then(function(data){
+        if (!data || !Array.isArray(data.sources)) return;
+        var container = document.getElementById("rss-sources-list");
+        if (!container) return;
+        var counter = document.getElementById("rss-active-counter");
+        var active = data.sources.filter(function(s){ return s.isActive; }).length;
+        if (counter) counter.textContent = active + " ativas";
+        
+        var catMap = { 1: "Inteligência Artificial", 2: "Economia", 3: "Ganhar Dinheiro", 4: "Home Office" };
+
+        if (data.sources.length === 0) {
+          container.innerHTML = '<div style="text-align:center;padding:24px;color:var(--c-text-muted);font-size:13px">Nenhuma fonte cadastrada ainda.</div>';
+          return;
+        }
+
+        container.innerHTML = data.sources.map(function(s){
+          var domain = s.url;
+          try { domain = new URL(s.url).hostname.replace(/^www\\./, ""); } catch(e){}
+          var cat = catMap[s.categoryId] || ("Categoria " + s.categoryId);
+          var safeName = s.name.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+          var safeDomain = domain.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+          return '<div class="rss-source-item" id="rss-source-' + s.id + '">' +
+            '<div class="rss-source-info">' +
+              '<div class="rss-source-name">' +
+                '<span>' + safeName + '</span>' +
+                '<span class="status-pill" style="font-size:10px;padding:2px 6px">' + cat + '</span>' +
+              '</div>' +
+              '<div class="rss-source-url" title="' + s.url + '">' + safeDomain + '</div>' +
+            '</div>' +
+            '<div style="display:flex;align-items:center;gap:10px;flex-shrink:0">' +
+              '<label class="switch-toggle" title="' + (s.isActive ? "Desativar fonte" : "Ativar fonte") + '">' +
+                '<input type="checkbox" ' + (s.isActive ? "checked" : "") + ' onchange="toggleRssSource(' + s.id + ', this.checked)">' +
+                '<span class="switch-slider"></span>' +
+              '</label>' +
+              '<button type="button" onclick="deleteRssSource(' + s.id + ')" title="Excluir fonte" style="color:var(--c-text-muted);padding:4px;cursor:pointer;border-radius:4px;transition:color .15s ease" onmouseover="this.style.color=\\'var(--c-danger)\\'" onmouseout="this.style.color=\\'var(--c-text-muted)\\'">' +
+                '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>' +
+              '</button>' +
+            '</div>' +
+          '</div>';
+        }).join("");
+      });
+  }
+
+  // Load radar if tab is active or upon opening
+  var activeTab = new URL(window.location).searchParams.get("tab");
+  if (activeTab === "rss") {
+    loadRssRadar();
+  }
+  var navBtn = document.querySelector(".main-nav-btn[data-tab='rss']");
+  if (navBtn) {
+    navBtn.addEventListener("click", function(){
+      if (radarArticles.length === 0) loadRssRadar();
     });
   }
 })();

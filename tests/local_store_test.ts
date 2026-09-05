@@ -181,3 +181,31 @@ test("local sqlite: database metrics e clear runs", async () => {
   await store.optimizeDatabase();
 });
 
+test("local sqlite: rss_sources seed, CRUD e toggle", async () => {
+  const store = newStore();
+  await store.init();
+
+  // Verifica se o seed inicial inseriu as 5 fontes recomendadas
+  const initialSources = await store.listRssSources();
+  assert.equal(initialSources.length, 5);
+  assert.ok(initialSources.some((s) => s.name === "Canaltech"));
+
+  // Adicionar nova fonte
+  const newId = await store.addRssSource("TechCrunch", "https://techcrunch.com/feed/", 1);
+  assert.ok(newId > 0);
+
+  const updatedSources = await store.listRssSources(1);
+  assert.equal(updatedSources.length, 6);
+
+  // Toggle status
+  await store.toggleRssSource(newId, false);
+  const afterToggle = await store.listRssSources(1);
+  const toggled = afterToggle.find((s) => s.id === newId);
+  assert.equal(toggled?.isActive, false);
+
+  // Delete
+  await store.deleteRssSource(newId);
+  const afterDelete = await store.listRssSources(1);
+  assert.equal(afterDelete.length, 5);
+});
+

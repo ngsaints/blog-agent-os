@@ -175,6 +175,15 @@ export interface ListChatMessagesOptions {
   limit?: number;
 }
 
+export interface RssSource {
+  id: number;
+  name: string;
+  url: string;
+  categoryId: number;
+  isActive: boolean;
+  createdAt: string;
+}
+
 export interface SqlStore {
   init(): Promise<void>;
   listBlogs(): Promise<Blog[]>;
@@ -209,6 +218,10 @@ export interface SqlStore {
   deleteChatConversation(id: number): Promise<void>;
   listChatMessages(conversationId: number, opts?: ListChatMessagesOptions): Promise<ChatMessage[]>;
   addChatMessage(conversationId: number, role: "user" | "assistant", content: string): Promise<number>;
+  listRssSources(categoryId?: number): Promise<RssSource[]>;
+  addRssSource(name: string, url: string, categoryId?: number): Promise<number>;
+  toggleRssSource(id: number, isActive: boolean): Promise<void>;
+  deleteRssSource(id: number): Promise<void>;
 }
 
 function num(v: unknown): number {
@@ -237,6 +250,17 @@ export function toBlog(row: Row): Blog {
     name: str(row.name),
     baseUrl: str(row.base_url),
     token: str(row.token),
+    createdAt: str(row.created_at),
+  };
+}
+
+export function toRssSource(row: Row): RssSource {
+  return {
+    id: num(row.id),
+    name: str(row.name),
+    url: str(row.url),
+    categoryId: num(row.category_id),
+    isActive: bool(row.is_active),
     createdAt: str(row.created_at),
   };
 }
@@ -390,6 +414,15 @@ export class TursoStore implements SqlStore {
         created_at TEXT NOT NULL
       )`,
       `CREATE INDEX IF NOT EXISTS idx_chat_messages_conv ON chat_messages(conversation_id, id)`,
+      `CREATE TABLE IF NOT EXISTS rss_sources (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        url TEXT NOT NULL,
+        category_id INTEGER NOT NULL DEFAULT 1,
+        is_active INTEGER NOT NULL DEFAULT 1,
+        created_at TEXT NOT NULL
+      )`,
+      `CREATE INDEX IF NOT EXISTS idx_rss_sources_cat ON rss_sources(category_id, is_active)`,
     ], "write");
     try {
       await this.client.execute(
@@ -465,6 +498,28 @@ export class TursoStore implements SqlStore {
       await this.client.execute(
         `UPDATE runs SET status = 'error', error = 'Execução interrompida por reinício da instância' WHERE status = 'running'`,
       );
+    } catch {
+      // ignore
+    }
+    try {
+      const checkRss = await this.client.execute(`SELECT COUNT(*) as count FROM rss_sources`);
+      const count = Number((checkRss.rows[0] as any)?.count ?? 0);
+      if (count === 0) {
+        const now = new Date().toISOString();
+        const defaultSources = [
+          { name: "Canaltech", url: "https://canaltech.com.br/rss/", categoryId: 1 },
+          { name: "G1 Tecnologia", url: "https://g1.globo.com/rss/g1/tecnologia/", categoryId: 1 },
+          { name: "TecMundo", url: "https://rss.tecmundo.com.br/feed", categoryId: 1 },
+          { name: "Olhar Digital", url: "https://olhardigital.com.br/feed/", categoryId: 1 },
+          { name: "Google Notícias Tecnologia", url: "https://news.google.com/rss/headlines/section/topic/TECHNOLOGY?hl=pt-BR&gl=BR&ceid=BR:pt-419", categoryId: 1 },
+        ];
+        for (const s of defaultSources) {
+          await this.client.execute({
+            sql: `INSERT INTO rss_sources (name, url, category_id, is_active, created_at) VALUES (?, ?, ?, 1, ?)`,
+            args: [s.name, s.url, s.categoryId, now],
+          });
+        }
+      }
     } catch {
       // ignore
     }
@@ -963,5 +1018,40 @@ export class TursoStore implements SqlStore {
       args: [conversationId, role, content, new Date().toISOString()],
     });
     return Number(res.lastInsertRowid);
+  }
+
+  async listRssSources(categoryId?: number): Promise<RssSource[]> {
+    if (typeof categoryId === "number") {
+      const res = await this.client.execute({
+        sql: `SELECT * FROM rss_sources WHERE category_id = ? ORDER BY id ASC`,
+        args: [categoryId],
+      });
+      return res.rows.map((r) => toRssSource(r as Row));
+    }
+    const res = await this.client.execute(`SELECT * FROM rss_sources ORDER BY category_id ASC, id ASC`);
+    return res.rows.map((r) => toRssSource(r as Row));
+  }
+
+  async addRssSource(name: string, url: string, categoryId = 1): Promise<number> {
+    const now = new Date().toISOString();
+    const res = await this.client.execute({
+      sql: `INSERT INTO rss_sources (name, url, category_id, is_active, created_at) VALUES (?, ?, ?, 1, ?)`,
+      args: [name.trim(), url.trim(), categoryId, now],
+    });
+    return num(res.lastInsertRowid);
+  }
+
+  async toggleRssSource(id: number, isActive: boolean): Promise<void> {
+    await this.client.execute({
+      sql: `UPDATE rss_sources SET is_active = ? WHERE id = ?`,
+      args: [isActive ? 1 : 0, id],
+    });
+  }
+
+  async deleteRssSource(id: number): Promise<void> {
+    await this.client.execute({
+      sql: `DELETE FROM rss_sources WHERE id = ?`,
+      args: [id],
+    });
   }
 }

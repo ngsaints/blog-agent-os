@@ -26,6 +26,7 @@ import {
   rankingPage,
   settingsPage,
 } from "./dashboard.ts";
+import { fetchMultiFeedRadar } from "./rss.ts";
 
 export interface ServerContext {
   config: AppConfig;
@@ -710,6 +711,58 @@ REGRAS:
       });
     }
 
+    if (path === "/admin/api/rss-sources" && method === "GET") {
+      if (!(await isAuthenticated(req, ctx.config))) return json({ error: "auth" }, 401);
+      const catParam = url.searchParams.get("categoryId");
+      const categoryId = catParam ? Number(catParam) : undefined;
+      const sources = await ctx.store.listRssSources(categoryId);
+      return json({ sources });
+    }
+
+    if (path === "/admin/api/rss-sources" && method === "POST") {
+      if (!(await isAuthenticated(req, ctx.config))) return json({ error: "auth" }, 401);
+      const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
+      const name = String(body?.name ?? "").trim();
+      const feedUrl = String(body?.url ?? "").trim();
+      const categoryId = Number(body?.categoryId ?? 1);
+      if (!name || !feedUrl) {
+        return json({ error: "Nome e URL do feed são obrigatórios." }, 400);
+      }
+      try {
+        const id = await ctx.store.addRssSource(name, feedUrl, categoryId);
+        return json({ id, ok: true }, 201);
+      } catch (err) {
+        return json({ error: err instanceof Error ? err.message : String(err) }, 500);
+      }
+    }
+
+    const rssToggleMatch = path.match(/^\/admin\/api\/rss-sources\/(\d+)\/toggle$/);
+    if (rssToggleMatch && method === "POST") {
+      if (!(await isAuthenticated(req, ctx.config))) return json({ error: "auth" }, 401);
+      const id = Number(rssToggleMatch[1]);
+      const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
+      const isActive = Boolean(body?.isActive);
+      await ctx.store.toggleRssSource(id, isActive);
+      return json({ ok: true });
+    }
+
+    const rssDeleteMatch = path.match(/^\/admin\/api\/rss-sources\/(\d+)$/);
+    if (rssDeleteMatch && method === "DELETE") {
+      if (!(await isAuthenticated(req, ctx.config))) return json({ error: "auth" }, 401);
+      const id = Number(rssDeleteMatch[1]);
+      await ctx.store.deleteRssSource(id);
+      return json({ ok: true });
+    }
+
+    if (path === "/admin/api/rss-radar" && method === "GET") {
+      if (!(await isAuthenticated(req, ctx.config))) return json({ error: "auth" }, 401);
+      const catParam = url.searchParams.get("categoryId");
+      const categoryId = catParam ? Number(catParam) : undefined;
+      const sources = await ctx.store.listRssSources(categoryId);
+      const articles = await fetchMultiFeedRadar(sources, 30);
+      return json({ articles });
+    }
+
     return json({ error: "Não encontrado" }, 404);
   };
 }
@@ -724,13 +777,14 @@ async function dashboard(ctx: ServerContext, url: URL): Promise<Response> {
   const selectedBlogId = blogIdParam ? Number(blogIdParam) : null;
   const activeTab = url.searchParams.get("tab") || "agents";
 
-  const [agents, runs, stats, blogs, categoriesByBlog, databaseMetrics] = await Promise.all([
+  const [agents, runs, stats, blogs, categoriesByBlog, databaseMetrics, rssSources] = await Promise.all([
     ctx.store.listAgents(),
     ctx.store.listRuns(30),
     ctx.store.getStats(),
     ctx.store.listBlogs(),
     fetchAllCategories(ctx),
     ctx.store.getDatabaseMetrics(),
+    ctx.store.listRssSources(),
   ]);
   const settings = ctx.settings.get();
   const credits = settings.openrouterApiKey ? await ctx.openrouter.getCredits() : null;
@@ -845,6 +899,7 @@ async function dashboard(ctx: ServerContext, url: URL): Promise<Response> {
     isDenoDeploy: ctx.config.isDenoDeploy,
     cronUrl: `${url.origin}/__cron?token=${ctx.config.cronToken || "SEU_CRON_TOKEN"}`,
     hasCronToken: Boolean(ctx.config.cronToken),
+    rssSources,
   };
   return dashboardPage(data);
 }
