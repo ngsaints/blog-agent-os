@@ -340,7 +340,131 @@ ${pinterestNote}
 Gere o artigo completo seguindo rigorosamente o FOCO EDITORIAL e INSTRUÇÕES acima, conforme o formato JSON solicitado no system prompt.`;
 }
 
-function cleanJsonText(raw: string): string {
+export function ensureSemanticHtml(raw: string): string {
+  if (!raw) return "";
+  let text = String(raw).trim();
+
+  // 1. Desescapar quebras literais de linha se existirem (\n como caracteres em string)
+  if (text.includes("\\n") && !text.includes("\n")) {
+    text = text.replace(/\\r\\n/g, "\n").replace(/\\n/g, "\n").replace(/\\r/g, "\n");
+  } else if (text.includes("\\n")) {
+    text = text.replace(/\\n/g, "\n");
+  }
+
+  // 2. Normalizar quebras de linha
+  text = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+
+  // 3. Converter links em Markdown [Texto](url) -> <a href="url" target="_blank" rel="noopener">Texto</a>
+  text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_m, title, url) => {
+    const cleanUrl = String(url).replace(/["'\\]/g, "").trim() || "#";
+    return `<a href="${cleanUrl}" target="_blank" rel="noopener">${title}</a>`;
+  });
+
+  // 4. Converter negrito e itálico em Markdown (**texto** -> <strong>texto</strong>)
+  text = text.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+  text = text.replace(/__([^_]+)__/g, "<strong>$1</strong>");
+  text = text.replace(/(^|[^\*])\*([^*\n]+)\*([^\*]|$)/g, "$1<em>$2</em>$3");
+
+  // 5. Converter cabeçalhos em Markdown (#, ##, ###)
+  text = text.replace(/^###\s+(.+)$/gm, "<h3>$1</h3>");
+  text = text.replace(/^##\s+(.+)$/gm, "<h2>$1</h2>");
+  text = text.replace(/^#\s+(.+)$/gm, "<h2>$1</h2>");
+
+  // 6. Dividir em blocos separados por 2 ou mais quebras de linha
+  const rawBlocks = text.split(/\n{2,}/);
+  const processedBlocks: string[] = [];
+
+  for (let block of rawBlocks) {
+    block = block.trim();
+    if (!block) continue;
+
+    // Se o bloco já é um elemento HTML estrutural completo
+    if (/^<(?:h[1-6]|p|ul|ol|blockquote|pre|figure|table|div)\b/i.test(block)) {
+      processedBlocks.push(block);
+      continue;
+    }
+
+    const lines = block.split(/\n/).map((l) => l.trim()).filter(Boolean);
+
+    // Lista não-ordenada (- ou * ou •)
+    const isBulletList = lines.length > 0 && lines.every((l) => /^[-*•]\s+/.test(l));
+    if (isBulletList) {
+      const items = lines.map((l) => `  <li>${l.replace(/^[-*•]\s+/, "")}</li>`).join("\n");
+      processedBlocks.push(`<ul>\n${items}\n</ul>`);
+      continue;
+    }
+
+    // Lista numerada (1. ou 1))
+    const isNumberedList = lines.length > 0 && lines.every((l) => /^\d+[.)]\s+/.test(l));
+    if (isNumberedList) {
+      const items = lines.map((l) => `  <li>${l.replace(/^\d+[.)]\s+/, "")}</li>`).join("\n");
+      processedBlocks.push(`<ol>\n${items}\n</ol>`);
+      continue;
+    }
+
+    // Identificar subtítulos sem tags: linha única curta (<90 chars), sem ponto final (.!?;), sem tags de link/parágrafo
+    const isHeading = lines.length === 1 &&
+      block.length < 90 &&
+      !/[.!?;]$/.test(block) &&
+      !block.includes("<p>") &&
+      !block.includes("<a ");
+
+    if (isHeading) {
+      processedBlocks.push(`<h2>${block}</h2>`);
+      continue;
+    }
+
+    // Se o bloco tiver múltiplas linhas com listas ou tópicos misturados
+    if (lines.length > 1) {
+      let hasMixed = false;
+      const subHtml: string[] = [];
+      let inList = false;
+
+      for (const line of lines) {
+        if (/^[-*•]\s+/.test(line)) {
+          if (!inList) { subHtml.push("<ul>"); inList = true; }
+          subHtml.push(`  <li>${line.replace(/^[-*•]\s+/, "")}</li>`);
+          hasMixed = true;
+        } else {
+          if (inList) { subHtml.push("</ul>"); inList = false; }
+          if (/^<(?:h[1-6]|p|blockquote|pre)\b/i.test(line)) {
+            subHtml.push(line);
+            hasMixed = true;
+          } else if (line.length < 80 && !/[.!?;]$/.test(line) && !line.includes("<a ")) {
+            subHtml.push(`<h3>${line}</h3>`);
+            hasMixed = true;
+          } else {
+            subHtml.push(`<p>${line}</p>`);
+            hasMixed = true;
+          }
+        }
+      }
+      if (inList) subHtml.push("</ul>");
+
+      if (hasMixed) {
+        processedBlocks.push(subHtml.join("\n"));
+        continue;
+      }
+    }
+
+    // Parágrafo padrão envolvido em <p>...</p>
+    const cleanBlock = block.replace(/^<p>/i, "").replace(/<\/p>$/i, "").trim();
+    processedBlocks.push(`<p>${cleanBlock}</p>`);
+  }
+
+  let finalHtml = processedBlocks.join("\n\n");
+
+  // Limpeza de tags aninhadas indevidas
+  finalHtml = finalHtml.replace(/<p>\s*<(?:h[1-6]|ul|ol|blockquote|pre|figure)\b([^>]*)>/gi, "<$1>");
+  finalHtml = finalHtml.replace(/<\/(?:h[1-6]|ul|ol|blockquote|pre|figure)>\s*<\/p>/gi, "</$1>");
+  finalHtml = finalHtml.replace(/<p>\s*<p>/gi, "<p>");
+  finalHtml = finalHtml.replace(/<\/p>\s*<\/p>/gi, "</p>");
+  finalHtml = finalHtml.replace(/<p>\s*<\/p>/gi, "");
+
+  return finalHtml.trim();
+}
+
+export function cleanJsonText(raw: string): string {
   let text = String(raw ?? "").trim();
   if (!text) return "";
   // Remove reasoning <think>...</think>
@@ -380,7 +504,8 @@ export function safeParseJson(raw: string): Record<string, unknown> {
 export function parseArticleJson(raw: string): Article {
   const data = safeParseJson(raw);
   const title = String(data.title ?? "").trim();
-  const contentHtml = String(data.content_html ?? "").trim();
+  const rawContent = String(data.content_html ?? data.content ?? "").trim();
+  const contentHtml = ensureSemanticHtml(rawContent);
   if (!title || title.length < 3) throw new Error("Artigo sem título válido");
   if (contentHtml.length < 200) {
     throw new Error("Artigo muito curto (conteúdo HTML com menos de 200 caracteres)");

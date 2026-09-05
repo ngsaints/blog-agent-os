@@ -3370,7 +3370,7 @@ export function renderCreatePostTab(data: DashboardData): string {
           case "link": insert = '<a href="https://" target="_blank" rel="noopener">' + (sel || "Texto do link") + '</a>'; break;
           case "img": insert = '\\n<figure><img src="https://" alt="' + (sel || "Descrição da imagem") + '"><figcaption>' + (sel || "Legenda") + '</figcaption></figure>\\n'; break;
           case "clear":
-            contentInput.value = contentInput.value.replace(/\\n{3,}/g, "\\n\\n").trim();
+            contentInput.value = formatSemanticHtmlClient(contentInput.value);
             updateMetrics();
             return;
         }
@@ -3609,6 +3609,64 @@ export function renderCreatePostTab(data: DashboardData): string {
     if (btnSeoTags) btnSeoTags.click();
   });
 
+  // --- Semantic HTML Formatter (Client Defense) ---
+  function formatSemanticHtmlClient(raw){
+    if (!raw) return "";
+    var t = String(raw).trim();
+    t = t.replace(new RegExp("[\\x60]{3}(?:json|html)?([\\s\\S]*?)[\\x60]{3}", "gi"), "$1").trim();
+    if (t.indexOf("{") === 0 && t.lastIndexOf("}") === t.length - 1) {
+      try {
+        var parsed = JSON.parse(t);
+        if (parsed.content_html) t = parsed.content_html;
+        else if (parsed.content) t = parsed.content;
+      } catch(e){}
+    }
+    if (t.indexOf("\\n") !== -1 && t.indexOf("\n") === -1) {
+      t = t.replace(/\\r\\n/g, "\n").replace(/\\n/g, "\n").replace(/\\r/g, "\n");
+    } else if (t.indexOf("\\n") !== -1) {
+      t = t.replace(/\\n/g, "\n");
+    }
+    t = t.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+    t = t.replace(/\[([^\]]+)\]\(([^)]+)\)/g, function(_m, title, url){
+      var clean = String(url).replace(/["'\\]/g, "").trim() || "#";
+      return '<a href="' + clean + '" target="_blank" rel="noopener">' + title + '</a>';
+    });
+    t = t.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+    t = t.replace(/^###\s+(.+)$/gm, "<h3>$1</h3>");
+    t = t.replace(/^##\s+(.+)$/gm, "<h2>$1</h2>");
+    t = t.replace(/^#\s+(.+)$/gm, "<h2>$1</h2>");
+    
+    var blocks = t.split(/\n{2,}/);
+    var res = [];
+    for (var i = 0; i < blocks.length; i++) {
+      var b = blocks[i].trim();
+      if (!b) continue;
+      if (/^<(?:h[1-6]|p|ul|ol|blockquote|pre|figure|table|div)\b/i.test(b)) {
+        res.push(b);
+        continue;
+      }
+      var lines = b.split(/\n/).map(function(l){ return l.trim(); }).filter(Boolean);
+      var isBul = lines.length > 0 && lines.every(function(l){ return /^[-*•]\s+/.test(l); });
+      if (isBul) {
+        res.push("<ul>\n" + lines.map(function(l){ return "  <li>" + l.replace(/^[-*•]\s+/, "") + "</li>"; }).join("\n") + "\n</ul>");
+        continue;
+      }
+      var isNum = lines.length > 0 && lines.every(function(l){ return /^\d+[.)]\s+/.test(l); });
+      if (isNum) {
+        res.push("<ol>\n" + lines.map(function(l){ return "  <li>" + l.replace(/^\d+[.)]\s+/, "") + "</li>"; }).join("\n") + "\n</ol>");
+        continue;
+      }
+      var isHead = lines.length === 1 && b.length < 90 && !/[.!?;]$/.test(b) && b.indexOf("<p>") === -1 && b.indexOf("<a ") === -1;
+      if (isHead) {
+        res.push("<h2>" + b + "</h2>");
+        continue;
+      }
+      var cleanB = b.replace(/^<p>/i, "").replace(/<\/p>$/i, "").trim();
+      res.push("<p>" + cleanB + "</p>");
+    }
+    return res.join("\n\n").trim();
+  }
+
   // --- Full Article Generation ---
   var bG = document.getElementById("btn-generate-content");
   var gS = document.getElementById("gen-status");
@@ -3636,10 +3694,13 @@ export function renderCreatePostTab(data: DashboardData): string {
           gS.innerHTML = '<span style="color:var(--c-danger);font-size:12px">' + r.error + '</span>';
           return;
         }
+        var formattedHtml = formatSemanticHtmlClient(r.content_html || r.content || "");
+        r.content_html = formattedHtml;
+        r.content = formattedHtml;
         lastGen = r;
-        gR.innerHTML = (r.title ? '<h4 style="margin:0 0 6px;font-size:13.5px">' + r.title + '</h4>' : '') +
-          (r.excerpt ? '<p style="color:var(--c-text-soft);margin:0 0 8px;font-size:12px">' + r.excerpt + '</p>' : '') +
-          '<div style="max-height:160px;overflow-y:auto;font-size:12px;color:var(--c-text-soft)">' + (r.content_html || r.content || "") + '</div>';
+        gR.innerHTML = (r.title ? '<h4 style="margin:0 0 6px;font-size:13.5px">' + escHtml(r.title) + '</h4>' : '') +
+          (r.excerpt ? '<p style="color:var(--c-text-soft);margin:0 0 8px;font-size:12px">' + escHtml(r.excerpt) + '</p>' : '') +
+          '<div style="max-height:180px;overflow-y:auto;font-size:12px;color:var(--c-text-soft);line-height:1.5">' + formattedHtml + '</div>';
         gR.style.display = "block";
         bF.style.display = "block";
       }).catch(function(e){
@@ -3653,13 +3714,13 @@ export function renderCreatePostTab(data: DashboardData): string {
       if (!lastGen) return;
       if (lastGen.title && titleInput) titleInput.value = lastGen.title;
       if (lastGen.excerpt && excerptInput) excerptInput.value = lastGen.excerpt;
-      if (lastGen.content_html && contentInput) contentInput.value = lastGen.content_html;
-      else if (lastGen.content && contentInput) contentInput.value = lastGen.content;
+      var cleanHtml = formatSemanticHtmlClient(lastGen.content_html || lastGen.content || "");
+      if (cleanHtml && contentInput) contentInput.value = cleanHtml;
       if (lastGen.slug && slugInput) slugInput.value = lastGen.slug;
       if (lastGen.tags && document.getElementById("post-tags")) document.getElementById("post-tags").value = lastGen.tags;
       bF.style.display = "none";
       updateMetrics();
-      if (gS) gS.innerHTML = '<span style="color:var(--c-success);font-size:12px">Formulário preenchido com sucesso.</span>';
+      if (gS) gS.innerHTML = '<span style="color:var(--c-success);font-size:12px">Formulário preenchido com sucesso em HTML semântico.</span>';
     });
   }
 

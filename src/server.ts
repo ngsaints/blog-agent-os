@@ -4,7 +4,13 @@ import type { OpenRouterClient } from "./openrouter.ts";
 import { PexelsClient } from "./pexels.ts";
 import { BlogApiClient, type CategoryInfo, normalizeBlogBaseUrl } from "./blog_api.ts";
 import type { AgentRunner } from "./scheduler.ts";
-import { runAgentOnce } from "./agent.ts";
+import {
+  cleanJsonText,
+  ensureSemanticHtml,
+  parseArticleJson,
+  runAgentOnce,
+  safeParseJson,
+} from "./agent.ts";
 import { isAgentRunning, runAgentNow, runDueAgents } from "./scheduler.ts";
 import { systemLogger } from "./logger.ts";
 import { type PanelSettings, SettingsService } from "./settings.ts";
@@ -497,46 +503,108 @@ export function createHandler(ctx: ServerContext): Handler {
           }
         } catch { /* fallback */ }
 
-        const system = `Voce e um redator profissional de blog brasileiro senior. Escreva artigos em portugues do Brasil, com otima qualidade editorial, SEO otimizado e HTML semantico pronto para publicacao.
+        const system = `Voce e um redator profissional de blog brasileiro senior. Escreva artigos em portugues do Brasil, com altissima qualidade editorial, SEO otimizado e HTML semantico impecavel pronto para publicacao.
 ${useWebSearch ? "\nIMPORTANTE: A pesquisa web em tempo real esta ativada. Incorpore fatos recentes, estatisticas, referencias e informacoes atualizadas com autoridade editorial." : ""}
 ${newsGrounding}
 
-**FORMATO DE RESPOSTA:** Retorne APENAS um JSON valido com:
-{
-  "title": "Titulo do artigo",
-  "excerpt": "Resumo em 2 frases",
-  "content_html": "<p>Conteudo completo em HTML com h2, h3, <strong>, <em>, <a>, <ul>, <li>...</p>",
-  "slug": "slug-do-artigo",
-  "tags": "tag1, tag2, tag3"
-}
+DIRETRIZES RIGOROSAS DE FORMATAÇÃO:
+- O content_html DEVE ser estruturado EXCLUSIVAMENTE em HTML semântico limpo:
+  * Cada parágrafo DEVE estar envolvido na tag <p>...</p>.
+  * Subtítulos principais DEVEM usar <h2>...</h2>.
+  * Subseções menores DEVEM usar <h3>...</h3>.
+  * Destaques em <strong>...</strong> e <em>...</em>.
+  * Listas em <ul><li>...</li></ul> ou <ol><li>...</li></ol>.
+- É TERMINANTEMENTE PROIBIDO deixar texto solto com quebras de linha \\n\\n sem envolver em tags <p> ou <h2>.
+- É TERMINANTEMENTE PROIBIDO usar marcadores markdown como ** ou # ou links markdown [texto](url). Use apenas tags HTML (<a href="...">, <strong>, <h2>).
+- Não inclua emojis.
+- Responda EXCLUSIVAMENTE com o objeto JSON puro, sem introdução, sem saudações, sem conversas e sem markdown fences (\`\`\`json). Inicie com { e termine com }.
 
-REGRAS:
-- Nao use marcadores markdown como **. Use tags HTML.
-- Nao inclua emojis.
-- Links internos use href=\"#\" se nao souber o destino.
-- O content_html deve ser auto-contido e profissional pronto para publicacao.
-- Maximo 2500 palavras.`;
+Formato JSON esperado:
+{
+  "title": "Titulo atraente e magnetico do artigo",
+  "excerpt": "Resumo conciso de ate 160 caracteres",
+  "content_html": "<p>Primeiro paragrafo...</p><h2>Subtitulo</h2><p>Segundo paragrafo...</p>",
+  "slug": "slug-otimizado",
+  "tags": "tag1, tag2, tag3"
+}`;
         const result = await ctx.openrouter.chat({
           model,
           system,
           user: `Escreva um artigo completo de blog sobre: ${prompt}`,
-          maxTokens: 4096,
-          temperature: 0.8,
+          maxTokens: 8192,
+          temperature: 0.75,
           webSearch: useWebSearch,
+          subagent: true,
+          advisor: true,
         });
-        let parsed: Record<string, unknown> = {};
+
+        let title = "";
+        let excerpt = "";
+        let contentHtml = "";
+        let slug = "";
+        let tags = "";
+
         try {
-          const raw = result.content.trim();
-          const jsonMatch = raw.match(/\{[\s\S]*\}/);
-          if (jsonMatch) parsed = JSON.parse(jsonMatch[0]);
-        } catch { /* fallback */ }
+          const article = parseArticleJson(result.content);
+          title = article.title;
+          excerpt = article.excerpt;
+          contentHtml = article.contentHtml;
+          slug = article.slug || "";
+          tags = article.tags || "";
+        } catch {
+          try {
+            const parsed = safeParseJson(result.content);
+            title = String(parsed.title || "").trim();
+            excerpt = String(parsed.excerpt || "").trim();
+            contentHtml = ensureSemanticHtml(String(parsed.content_html || parsed.content || ""));
+            slug = String(parsed.slug || "").trim();
+            tags = String(parsed.tags || "").trim();
+          } catch {
+            const raw = result.content;
+            const titleMatch = raw.match(/"title"\s*:\s*"((?:[^"\\]|\\.)*)"/);
+            if (titleMatch) title = titleMatch[1].replace(/\\"/g, '"');
+
+            const excerptMatch = raw.match(/"excerpt"\s*:\s*"((?:[^"\\]|\\.)*)"/);
+            if (excerptMatch) excerpt = excerptMatch[1].replace(/\\"/g, '"');
+
+            const slugMatch = raw.match(/"slug"\s*:\s*"((?:[^"\\]|\\.)*)"/);
+            if (slugMatch) slug = slugMatch[1].replace(/\\"/g, '"');
+
+            const tagsMatch = raw.match(/"tags"\s*:\s*"((?:[^"\\]|\\.)*)"/);
+            if (tagsMatch) tags = tagsMatch[1].replace(/\\"/g, '"');
+
+            const contentMatch = raw.match(/"content_html"\s*:\s*"([\s\S]*?)"\s*,\s*"(?:slug|tags)"/);
+            if (contentMatch) {
+              contentHtml = ensureSemanticHtml(contentMatch[1]);
+            } else {
+              const altMatch = raw.match(/"content_html"\s*:\s*"([\s\S]*)/);
+              if (altMatch) {
+                const cleaned = altMatch[1]
+                  .replace(/"\s*}\s*```?[\s\S]*$/, "")
+                  .replace(/"\s*,\s*"[^"]+"\s*:[\s\S]*$/, "");
+                contentHtml = ensureSemanticHtml(cleaned);
+              } else {
+                const stripped = cleanJsonText(raw)
+                  .replace(/<think>[\s\S]*?<\/think>/gi, "")
+                  .replace(/```(?:json)?[\s\S]*?```/gi, "")
+                  .trim();
+                contentHtml = ensureSemanticHtml(stripped);
+              }
+            }
+          }
+        }
+
+        if (!contentHtml) {
+          contentHtml = ensureSemanticHtml(result.content);
+        }
+
         return json({
-          title: parsed.title || "",
-          excerpt: parsed.excerpt || "",
-          content_html: parsed.content_html || "",
-          content: parsed.content_html || result.content,
-          slug: parsed.slug || "",
-          tags: parsed.tags || "",
+          title: title || "Artigo Gerado",
+          excerpt: excerpt || "",
+          content_html: contentHtml,
+          content: contentHtml,
+          slug: slug || "",
+          tags: tags || "",
           model: result.model,
           cost: result.cost,
         });

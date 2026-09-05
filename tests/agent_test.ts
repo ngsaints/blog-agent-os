@@ -310,3 +310,33 @@ test("renderAvatar: renderiza badge 2.5D com SVG ou imagem", async () => {
   assert.ok(imgBadge.includes("badge-silver"));
   assert.ok(imgBadge.includes("<img src=\"https://meusite.com/avatar.png\""));
 });
+
+test("ensureSemanticHtml: converte texto puro com quebras em HTML semântico limpo", async () => {
+  const { ensureSemanticHtml, parseArticleJson } = await import("../src/agent.ts");
+
+  const rawSample = `Com base nas pesquisas realizadas, preparei o conteúdo editorial completo.
+\`\`\`json
+{
+  "title": "Jogos de hoje (05/09/26): onde assistir ao vivo",
+  "excerpt": "Sábado de futebol do amanhecer à madrugada.",
+  "content_html": "O sábado do torcedor brasileiro começa antes do café e termina depois da meia-noite.\\n\\nA agenda esportiva desta sexta-feira, 5 de setembro de 2026, anunciada pelo [Olhar Digital](https://exemplo.com), reserva mais de 40 partidas ao vivo.\\n\\n## Onde Assistir aos Principais Jogos\\n\\nConfira os destaques:\\n* Fluminense x Vasco: 18h no Maracanã\\n* Real Madrid x Betis: 16h em streaming\\n\\nPrepare a pipoca e acompanhe cada lance com emoção."
+}
+\`\`\`
+Esperamos que aproveite o artigo!`;
+
+  const parsed = parseArticleJson(rawSample);
+  assert.equal(parsed.title, "Jogos de hoje (05/09/26): onde assistir ao vivo");
+  assert.equal(parsed.excerpt, "Sábado de futebol do amanhecer à madrugada.");
+  
+  // Confere que contentHtml é HTML semântico com tags <p>, <h2>, <ul>, <a>
+  assert.ok(parsed.contentHtml.includes("<p>O sábado do torcedor brasileiro começa antes do café"));
+  assert.ok(parsed.contentHtml.includes('<a href="https://exemplo.com"'));
+  assert.ok(parsed.contentHtml.includes("<h2>Onde Assistir aos Principais Jogos</h2>"));
+  assert.ok(parsed.contentHtml.includes("<ul>"));
+  assert.ok(parsed.contentHtml.includes("<li>Fluminense x Vasco: 18h no Maracanã</li>"));
+  assert.ok(parsed.contentHtml.includes("<p>Prepare a pipoca e acompanhe cada lance com emoção.</p>"));
+  assert.ok(!parsed.contentHtml.includes("\\n"));
+  assert.ok(!parsed.contentHtml.includes("Com base nas pesquisas"));
+  assert.ok(!parsed.contentHtml.includes("```"));
+});
+
