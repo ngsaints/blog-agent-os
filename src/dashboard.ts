@@ -3693,39 +3693,39 @@ export function renderCreatePostTab(data: DashboardData): string {
         }
       } catch(e){}
     }
-    if (t.indexOf("\\n") !== -1 && t.indexOf("\n") === -1) {
-      t = t.replace(/\\r\\n/g, "\n").replace(/\\n/g, "\n").replace(/\\r/g, "\n");
-    } else if (t.indexOf("\\n") !== -1) {
-      t = t.replace(/\\n/g, "\n");
+    if (t.indexOf("\\\\n") !== -1 && t.indexOf("\\n") === -1) {
+      t = t.replace(/\\\\r\\\\n/g, "\\n").replace(/\\\\n/g, "\\n").replace(/\\\\r/g, "\\n");
+    } else if (t.indexOf("\\\\n") !== -1) {
+      t = t.replace(/\\\\n/g, "\\n");
     }
-    t = t.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
-    t = t.replace(/\[([^\]]+)\]\(([^)]+)\)/g, function(_m, title, url){
-      var clean = String(url).replace(/["'\\]/g, "").trim() || "#";
+    t = t.replace(/\\r\\n/g, "\\n").replace(/\\r/g, "\\n");
+    t = t.replace(/\\[([^\\]]+)\\]\\(([^)]+)\\)/g, function(_m, title, url){
+      var clean = String(url).replace(/["'\\\\]/g, "").trim() || "#";
       return '<a href="' + clean + '" target="_blank" rel="noopener">' + title + '</a>';
     });
-    t = t.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
-    t = t.replace(/^###\s+(.+)$/gm, "<h3>$1</h3>");
-    t = t.replace(/^##\s+(.+)$/gm, "<h2>$1</h2>");
-    t = t.replace(/^#\s+(.+)$/gm, "<h2>$1</h2>");
+    t = t.replace(/\\*\\*([^*]+)\\*\\*/g, "<strong>$1</strong>");
+    t = t.replace(/^###\\s+(.+)$/gm, "<h3>$1</h3>");
+    t = t.replace(/^##\\s+(.+)$/gm, "<h2>$1</h2>");
+    t = t.replace(/^#\\s+(.+)$/gm, "<h2>$1</h2>");
     
-    var blocks = t.split(/\n{2,}/);
+    var blocks = t.split(/\\n{2,}/);
     var res = [];
     for (var i = 0; i < blocks.length; i++) {
       var b = blocks[i].trim();
       if (!b) continue;
-      if (/^<(?:h[1-6]|p|ul|ol|blockquote|pre|figure|table|div)\b/i.test(b)) {
+      if (/^<(?:h[1-6]|p|ul|ol|blockquote|pre|figure|table|div)\\b/i.test(b)) {
         res.push(b);
         continue;
       }
-      var lines = b.split(/\n/).map(function(l){ return l.trim(); }).filter(Boolean);
-      var isBul = lines.length > 0 && lines.every(function(l){ return /^[-*•]\s+/.test(l); });
+      var lines = b.split(/\\n/).map(function(l){ return l.trim(); }).filter(Boolean);
+      var isBul = lines.length > 0 && lines.every(function(l){ return /^[-*•]\\s+/.test(l); });
       if (isBul) {
-        res.push("<ul>\n" + lines.map(function(l){ return "  <li>" + l.replace(/^[-*•]\s+/, "") + "</li>"; }).join("\n") + "\n</ul>");
+        res.push("<ul>\\n" + lines.map(function(l){ return "  <li>" + l.replace(/^[-*•]\\s+/, "") + "</li>"; }).join("\\n") + "\\n</ul>");
         continue;
       }
-      var isNum = lines.length > 0 && lines.every(function(l){ return /^\d+[.)]\s+/.test(l); });
+      var isNum = lines.length > 0 && lines.every(function(l){ return /^\\d+[.)]\\s+/.test(l); });
       if (isNum) {
-        res.push("<ol>\n" + lines.map(function(l){ return "  <li>" + l.replace(/^\d+[.)]\s+/, "") + "</li>"; }).join("\n") + "\n</ol>");
+        res.push("<ol>\\n" + lines.map(function(l){ return "  <li>" + l.replace(/^\\d+[.)]\\s+/, "") + "</li>"; }).join("\\n") + "\\n</ol>");
         continue;
       }
       var isHead = lines.length === 1 && b.length < 90 && !/[.!?;]$/.test(b) && b.indexOf("<p>") === -1 && b.indexOf("<a ") === -1;
@@ -3733,10 +3733,10 @@ export function renderCreatePostTab(data: DashboardData): string {
         res.push("<h2>" + b + "</h2>");
         continue;
       }
-      var cleanB = b.replace(/^<p>/i, "").replace(/<\/p>$/i, "").trim();
+      var cleanB = b.replace(/^<p>/i, "").replace(/<\\/p>$/i, "").trim();
       res.push("<p>" + cleanB + "</p>");
     }
-    return res.join("\n\n").trim();
+    return res.join("\\n\\n").trim();
   }
 
   // --- Full Article Generation ---
