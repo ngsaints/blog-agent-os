@@ -3,6 +3,7 @@ import type { OpenRouterClient } from "./openrouter.ts";
 import { type PexelsClient, type PexelsOrientation } from "./pexels.ts";
 import type { BlogApiClient, PostItem } from "./blog_api.ts";
 import type { SettingsService } from "./settings.ts";
+import { systemLogger } from "./logger.ts";
 import { OpenRouter as AgentSdkOpenRouter, tool, stepCountIs, maxCost } from "@openrouter/agent";
 import { z } from "zod";
 
@@ -523,12 +524,22 @@ export async function runImageAgentOnce(
   const now = new Date().toISOString();
   const runId = await store.addRun(agent.id, now);
   await store.touchLastRun(agent.id, now);
+  const runLog = systemLogger.createRunLogger(runId, agent.name, agent.id);
+  runLog.info(
+    `Iniciando Criador Visual para "${agent.name}"`,
+    `Modelo: ${agent.model} | Proporção: ${agent.imageAspectRatio || "9:16"} | Categoria ID: ${agent.categoryId} | Blog ID: ${agent.blogId ?? "nenhum"}`,
+  );
+
   try {
     let topPosts: PostItem[] = [];
     try {
+      runLog.step("Buscando posts de maior audiência no blog para inspiração visual...");
       topPosts = await blog.getTopPosts("views_7d", 3);
-    } catch {
-      // continua sem historico
+      if (topPosts.length > 0) {
+        runLog.info(`Histórico obtido (${topPosts.length} posts): ${topPosts.map((p) => `"${p.title}"`).join(", ")}`);
+      }
+    } catch (topErr) {
+      runLog.warn(`Não foi possível carregar histórico do blog: ${topErr instanceof Error ? topErr.message : topErr}`);
     }
 
     let topContext = "";
@@ -556,7 +567,7 @@ Gere o JSON com o "image_prompt" rico e detalhado em inglês (incorporando as di
 
     if (agent.toolsEnabled && or.getApiKey()) {
       try {
-        console.log(`[${agent.name}] Executando Criador Visual com Agent SDK (Tools & Web)...`);
+        runLog.step(`Executando Criador Visual com Agent SDK (Tools & Web)...`);
         const agentSdk = new AgentSdkOpenRouter({ apiKey: or.getApiKey() });
         const tools = createAgentTools(blog, pexels);
         const result = agentSdk.callModel({
@@ -578,7 +589,7 @@ Gere o JSON com o "image_prompt" rico e detalhado em inglês (incorporando as di
         completionTokensOut = (resp?.usage as any)?.completionTokens || 0;
         completionCost = (resp?.usage as any)?.cost || 0;
       } catch (err) {
-        console.warn(`[${agent.name}] Agent SDK fallback: ${err}`);
+        runLog.warn(`Agent SDK fallback acionado: ${err instanceof Error ? err.message : err}`);
         const completion = await or.chat({
           model: agent.model,
           system: IMAGE_CREATOR_SYSTEM_PROMPT,
@@ -593,6 +604,7 @@ Gere o JSON com o "image_prompt" rico e detalhado em inglês (incorporando as di
         usedModel = completion.model;
       }
     } else {
+      runLog.step(`Enviando prompt ao provedor de IA (${agent.model})...`);
       const completion = await or.chat({
         model: agent.model,
         system: IMAGE_CREATOR_SYSTEM_PROMPT,
@@ -607,7 +619,10 @@ Gere o JSON com o "image_prompt" rico e detalhado em inglês (incorporando as di
       usedModel = completion.model;
     }
 
+    runLog.info(`JSON visual recebido com sucesso`, `Título: "${parsed.title}" | Tokens: ${completionTokensIn}+${completionTokensOut} | Custo IA: $${completionCost.toFixed(4)}`);
+
     const activeImageModel = agent.imageModel || imageModel || "google/gemini-2.5-flash-image";
+    runLog.step(`Obtendo imagem (modo: ${agent.imageSourceMode}, modelo: ${activeImageModel})...`);
     const imageResult = await resolveImageForAgent(
       agent,
       parsed.image_prompt || parsed.title,
@@ -620,12 +635,15 @@ Gere o JSON com o "image_prompt" rico e detalhado em inglês (incorporando as di
     if (!imageResult) {
       throw new Error("Falha ao obter imagem (OpenRouter IA e Pexels indisponíveis).");
     }
+    runLog.info(`Imagem obtida com sucesso via ${imageResult.source.toUpperCase()}`, `Arquivo: ${imageResult.filename} (${imageResult.type})`);
 
+    runLog.step(`Fazendo upload da imagem para o blog (${blog.baseUrl})...`);
     const uploadedUrl = await blog.uploadImage(
       imageResult.bytes,
       imageResult.filename,
       imageResult.type,
     );
+    runLog.info(`Upload concluído`, `URL: ${uploadedUrl}`);
 
     const imagePostContent = (() => {
       let html = parsed.content_html || `<p>${parsed.excerpt}</p>`;
@@ -635,6 +653,7 @@ Gere o JSON com o "image_prompt" rico e detalhado em inglês (incorporando as di
       return html;
     })();
 
+    runLog.step(`Publicando post visual na API do blog...`);
     const result = await blog.createPost({
       title: parsed.title,
       content: imagePostContent,
@@ -650,6 +669,7 @@ Gere o JSON com o "image_prompt" rico e detalhado em inglês (incorporando as di
 
     const imageCost = imageResult.source === "ai" ? (imageResult.cost ?? 0.03) : 0;
     const finalTotalCost = completionCost + imageCost;
+    const fullLogText = runLog.formatFullLog();
 
     await store.finishRun(runId, {
       status: "success",
@@ -660,21 +680,27 @@ Gere o JSON com o "image_prompt" rico e detalhado em inglês (incorporando as di
       tokensIn: completionTokensIn,
       tokensOut: completionTokensOut,
       cost: finalTotalCost,
+      logs: fullLogText,
       finishedAt: new Date().toISOString(),
     });
     await store.bumpPostCount(agent.id);
     await store.setLastError(agent.id, null);
-    console.log(`[${agent.name}] Post Visual #${result.id || "?"} publicado: ${parsed.title}`);
+    runLog.success(`Post Visual #${result.id || "?"} publicado: "${parsed.title}" (Slug: ${result.slug || parsed.slug})`);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
+    const stack = err instanceof Error ? err.stack : undefined;
+    runLog.error(`Falha na geração visual: ${message}`, stack);
+    const fullLogText = runLog.formatFullLog();
+
     await store.finishRun(runId, {
       status: "error",
       model: agent.model,
       error: message,
+      logs: fullLogText,
       finishedAt: new Date().toISOString(),
     });
     await store.setLastError(agent.id, message);
-    console.error(`[${agent.name}] Falha na geração visual: ${message}`);
+    throw err;
   }
 }
 
@@ -695,12 +721,22 @@ export async function runAgentOnce(
   const now = new Date().toISOString();
   const runId = await store.addRun(agent.id, now);
   await store.touchLastRun(agent.id, now);
+  const runLog = systemLogger.createRunLogger(runId, agent.name, agent.id);
+  runLog.info(
+    `Iniciando Redator Autônomo para "${agent.name}"`,
+    `Modelo: ${agent.model} | Categoria ID: ${agent.categoryId} | Limite de Tokens: ${agent.maxTokens} | Blog ID: ${agent.blogId ?? "nenhum"} | Tools Web: ${agent.toolsEnabled ? "Sim" : "Não"}`,
+  );
+
   try {
     let topPosts: PostItem[] = [];
     try {
+      runLog.step("Consultando posts de maior audiência recente no blog...");
       topPosts = await blog.getTopPosts("views_7d", 3);
-    } catch {
-      // continua sem histórico
+      if (topPosts.length > 0) {
+        runLog.info(`Histórico recente obtido (${topPosts.length} posts): ${topPosts.map((p) => `"${p.title}"`).join(", ")}`);
+      }
+    } catch (topErr) {
+      runLog.warn(`Não foi possível carregar histórico do blog: ${topErr instanceof Error ? topErr.message : topErr}`);
     }
 
     let article: Article;
@@ -711,7 +747,7 @@ export async function runAgentOnce(
 
     if (agent.toolsEnabled && or.getApiKey()) {
       try {
-        console.log(`[${agent.name}] Executando Redator com Agent SDK (Tools & Web Search)...`);
+        runLog.step(`Executando Redator com Agent SDK (Tools & Web Search ativas)...`);
         const agentSdk = new AgentSdkOpenRouter({ apiKey: or.getApiKey() });
         const tools = createAgentTools(blog, pexels);
         const userPrompt = buildUserPrompt(agent, topPosts, task);
@@ -734,7 +770,7 @@ export async function runAgentOnce(
         totalTokensOut = (resp?.usage as any)?.completionTokens || 0;
         totalCost = (resp?.usage as any)?.cost || 0;
       } catch (agentSdkErr) {
-        console.warn(`[${agent.name}] Agent SDK fallback: ${agentSdkErr}`);
+        runLog.warn(`Agent SDK fallback acionado: ${agentSdkErr instanceof Error ? agentSdkErr.message : agentSdkErr}`);
         const completion = await or.chat({
           model: agent.model,
           system: SYSTEM_PROMPT,
@@ -749,6 +785,7 @@ export async function runAgentOnce(
         usedModel = completion.model;
       }
     } else {
+      runLog.step(`Gerando artigo via IA (${agent.model})...`);
       const completion = await or.chat({
         model: agent.model,
         system: SYSTEM_PROMPT,
@@ -763,23 +800,22 @@ export async function runAgentOnce(
       usedModel = completion.model;
     }
 
+    runLog.info(`Artigo gerado com sucesso: "${article.title}"`, `Tokens: ${totalTokensIn}+${totalTokensOut} | Custo IA: $${totalCost.toFixed(4)} | Modelo: ${usedModel}`);
+
     if (agent.reviewerId) {
       const reviewer = await store.getAgent(agent.reviewerId);
       if (reviewer && reviewer.status === "active") {
         try {
+          runLog.step(`Encaminhando artigo para revisão pelo agente "${reviewer.name}" (${reviewer.model})...`);
           const revResult = await reviewAndPolishArticle(article, reviewer, or);
           article = revResult.article;
           totalTokensIn += revResult.tokensIn;
           totalTokensOut += revResult.tokensOut;
           totalCost += revResult.cost;
           usedModel = `${usedModel} → ${reviewer.name}`;
-          console.log(
-            `[${agent.name}] Artigo revisado pelo agente "${reviewer.name}" (${reviewer.model})`,
-          );
+          runLog.info(`Revisão concluída`, `Tokens adicionais: ${revResult.tokensIn}+${revResult.tokensOut} | Custo extra: $${revResult.cost.toFixed(4)}`);
         } catch (revErr) {
-          console.warn(
-            `[${agent.name}] Revisão ignorada por erro: ${revErr instanceof Error ? revErr.message : revErr}`,
-          );
+          runLog.warn(`Revisão editorial ignorada por falha técnica: ${revErr instanceof Error ? revErr.message : revErr}`);
         }
       }
     }
@@ -788,6 +824,7 @@ export async function runAgentOnce(
     const activeImageModel = agent.imageModel || imageModel;
     if (agent.imageGen) {
       try {
+        runLog.step(`Gerando imagem de capa (modo: ${agent.imageSourceMode}, modelo: ${activeImageModel})...`);
         const visualDirectives = agent.prompt.trim() ? ` Diretrizes visuais: ${agent.prompt.trim()}.` : "";
         const imagePrompt = `Imagem de capa profissional de alta qualidade para artigo de blog: "${article.title}". ${agent.description.slice(0, 150)}.${visualDirectives} Iluminação cinematográfica, alta resolução 8k, composição limpa, sem textos sobrepostos.`;
         const imageResult = await resolveImageForAgent(
@@ -799,6 +836,8 @@ export async function runAgentOnce(
           settings,
         );
         if (imageResult) {
+          runLog.info(`Imagem obtida via ${imageResult.source.toUpperCase()}`, `Arquivo: ${imageResult.filename}`);
+          runLog.step(`Fazendo upload da imagem de capa para o blog...`);
           coverImage = await blog.uploadImage(
             imageResult.bytes,
             imageResult.filename,
@@ -807,18 +846,17 @@ export async function runAgentOnce(
           if (imageResult.source === "ai") {
             totalCost += (imageResult.cost ?? 0.03);
           }
-          // Inject photographer credit per Pexels API guidelines
           if (imageResult.source === "pexels" && imageResult.attributionHtml) {
             article = { ...article, contentHtml: article.contentHtml + "\n" + imageResult.attributionHtml };
           }
+          runLog.info(`Upload de capa concluído`, `URL: ${coverImage}`);
         }
-      } catch (err) {
-        console.warn(
-          `[${agent.name}] Obtenção de imagem ignorada: ${err instanceof Error ? err.message : err}`,
-        );
+      } catch (imgErr) {
+        runLog.warn(`Obtenção de imagem ignorada: ${imgErr instanceof Error ? imgErr.message : imgErr}`);
       }
     }
 
+    runLog.step(`Publicando artigo na API do blog (${blog.baseUrl})...`);
     const result = await blog.createPost({
       title: article.title,
       content: article.contentHtml,
@@ -840,6 +878,8 @@ export async function runAgentOnce(
       return m;
     })();
 
+    const fullLogText = runLog.formatFullLog();
+
     await store.finishRun(runId, {
       status: "success",
       model: finalModelInfo,
@@ -849,22 +889,29 @@ export async function runAgentOnce(
       tokensIn: totalTokensIn,
       tokensOut: totalTokensOut,
       cost: totalCost,
+      logs: fullLogText,
       finishedAt: new Date().toISOString(),
     });
     await store.bumpPostCount(agent.id);
     await store.setLastError(agent.id, null);
-    console.log(
-      `[${agent.name}] Post #${result.id || "?"} publicado: ${article.title}`,
+    runLog.success(
+      `Post #${result.id || "?"} publicado com sucesso: "${article.title}"`,
+      `Slug: ${result.slug || article.slug} | Tokens totais: ${totalTokensIn}+${totalTokensOut} | Custo total: $${totalCost.toFixed(4)}`,
     );
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
+    const stack = err instanceof Error ? err.stack : undefined;
+    runLog.error(`Falha na execução do Redator: ${message}`, stack);
+    const fullLogText = runLog.formatFullLog();
+
     await store.finishRun(runId, {
       status: "error",
       model: agent.model,
       error: message,
+      logs: fullLogText,
       finishedAt: new Date().toISOString(),
     });
     await store.setLastError(agent.id, message);
-    console.error(`[${agent.name}] Falha na execução: ${message}`);
+    throw err;
   }
 }

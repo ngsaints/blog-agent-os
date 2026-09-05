@@ -424,6 +424,38 @@ tbody tr{transition:background .12s ease}tbody tr:hover{background:var(--c-bg)}
   .layout{grid-template-columns:minmax(0,1fr) 320px}.stack-aside{position:sticky;top:80px}.settings-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
   .post-create-layout{grid-template-columns:minmax(0,1fr) 380px}
 }
+/* === Syslog & Run Details === */
+.syslog-terminal{background:#0b1120;color:#f8fafc;border-radius:14px;border:1px solid #1e293b;box-shadow:inset 0 2px 10px rgba(0,0,0,.6);font-family:var(--font-mono);font-size:12px;line-height:1.55;min-height:440px;max-height:640px;overflow-y:auto;padding:16px}
+.syslog-entry{padding:7px 10px;border-radius:8px;margin-bottom:6px;border-left:3px solid transparent;display:flex;flex-direction:column;gap:3px;transition:background .12s ease}
+.syslog-entry:hover{background:rgba(255,255,255,.05)}
+.syslog-entry.level-error{border-left-color:#ef4444;background:rgba(239,68,68,.09)}
+.syslog-entry.level-warn{border-left-color:#f59e0b;background:rgba(245,158,11,.08)}
+.syslog-entry.level-success{border-left-color:#10b981;background:rgba(16,185,129,.07)}
+.syslog-entry.level-info{border-left-color:#3b82f6}
+.syslog-meta{display:flex;align-items:center;gap:8px;font-size:11px;flex-wrap:wrap}
+.syslog-time{color:#94a3b8}
+.syslog-source{color:#38bdf8;font-weight:500}
+.syslog-badge{display:inline-block;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+.syslog-badge.error{background:#dc2626;color:#fff}
+.syslog-badge.warn{background:#d97706;color:#fff}
+.syslog-badge.success{background:#059669;color:#fff}
+.syslog-badge.info{background:#2563eb;color:#fff}
+.syslog-msg{color:#e2e8f0;word-break:break-word}
+.syslog-details{margin-top:6px;padding:10px 12px;background:#030712;border-radius:8px;color:#cbd5e1;font-size:11px;white-space:pre-wrap;word-break:break-all;border:1px solid #1e293b}
+.log-level-btn{border:1px solid var(--c-border);background:var(--c-surface);color:var(--c-text-soft);padding:4px 11px;border-radius:8px;font-size:12px;font-weight:500;cursor:pointer;transition:all .15s ease}
+.log-level-btn:hover{background:rgba(0,0,0,.04);color:var(--c-text)}
+.log-level-btn.active{background:var(--c-accent);color:#fff;border-color:var(--c-accent)}
+@keyframes pulse-ring{0%{transform:scale(0.9);opacity:.6}50%{transform:scale(1.15);opacity:1}100%{transform:scale(0.9);opacity:.6}}
+.pulse-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#2563eb;animation:pulse-ring 1.6s infinite ease-in-out}
+.run-log-terminal{background:#0f172a;color:#f1f5f9;border-radius:12px;border:1px solid #334155;padding:14px;font-family:var(--font-mono);font-size:12px;line-height:1.55;max-height:360px;overflow-y:auto;white-space:pre-wrap;word-break:break-word}
+.diag-card{padding:14px 16px;border-radius:12px;border:1px solid rgba(239,68,68,.3);background:#fef2f2;color:#991b1b;margin-bottom:14px}
+.agent-error{margin-top:10px;padding:8px 12px;background:#fef2f2;border:1px solid rgba(239,68,68,.25);border-radius:8px;color:#991b1b;font-size:12px;display:flex;align-items:center;gap:6px;word-break:break-word}
+.log-inspect-btn{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:6px;background:rgba(0,122,255,.08);color:#007aff;border:1px solid rgba(0,122,255,.2);font-size:11.5px;font-weight:500;cursor:pointer;transition:all .15s ease;text-decoration:none;white-space:nowrap}
+.log-inspect-btn:hover{background:#007aff;color:#fff}
+.log-inspect-btn.btn-error{background:rgba(239,68,68,.08);color:#dc2626;border-color:rgba(239,68,68,.2)}
+.log-inspect-btn.btn-error:hover{background:#dc2626;color:#fff}
+
+
 `;
 
 function html(body: string, status = 200): Response {
@@ -694,6 +726,10 @@ export function dashboardPage(data: DashboardData): Response {
         <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
         Banco de Dados
       </button>
+      <button class="main-nav-btn ${activeTab === "logs" ? "active" : ""}" data-tab="logs">
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+        Logs do Sistema
+      </button>
       <button class="main-nav-btn ${activeTab === "settings" ? "active" : ""}" data-tab="settings">
         <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
         Configurações &amp; Blogs
@@ -773,11 +809,16 @@ export function dashboardPage(data: DashboardData): Response {
     ${renderDatabaseTab(data.databaseMetrics)}
   </div>
 
+  <div id="tab-logs" class="tab-pane ${activeTab === "logs" ? "active" : ""}">
+    ${renderLogsTab(data.agents)}
+  </div>
+
   <div id="tab-settings" class="tab-pane ${activeTab === "settings" ? "active" : ""}">
     ${renderSettingsTab(data)}
   </div>
 
   ${allRunsModal(runs, agents)}
+  ${runDetailsModal()}
   ${agents.map((a) => agentProfileModal(a, runs, data.blogs)).join("")}
   ${newAgentModal(data.defaultModel, "", data.models, data.blogs, data.categoriesByBlog, agents)}
   ${agents.map((a) => editModal(a, data.models, data.blogs, data.categoriesByBlog, agents)).join("")}
@@ -786,6 +827,8 @@ export function dashboardPage(data: DashboardData): Response {
 ${modelComboboxJs(data.models)}
 ${blogCategoryJs(data.blogs, data.categoriesByBlog)}
 ${allRunsModalJs()}
+${logsTabJs()}
+${runDetailsModalJs()}
 <script>
 (function(){
   var initialUrl = new URL(window.location);
@@ -952,7 +995,11 @@ function agentCard(
     <span>Última execução: ${fmtDate(agent.lastRunAt)}</span>
     ${nextRunInfo}
   </div>
-  ${agent.lastError ? `<div class="agent-error">${escapeHtml(agent.lastError)}</div>` : ""}
+  ${agent.lastError ? `<div class="agent-error">
+    <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor" style="flex-shrink:0"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+    <div style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><strong>Última falha:</strong> ${escapeHtml(agent.lastError)}</div>
+    <a href="#agent-profile-${agent.id}" class="log-inspect-btn btn-error" style="flex-shrink:0;margin-left:auto">Ver Diagnóstico</a>
+  </div>` : ""}
 </div>`;
 }
 
@@ -976,7 +1023,7 @@ function agentProfileModal(agent: Agent, runs: Run[], blogs: Blog[]): string {
       const pill = r.status === "success"
         ? '<span class="status-pill status-success">Sucesso</span>'
         : r.status === "running"
-        ? '<span class="status-pill" style="background:#eff6ff;color:#1d4ed8;border-color:#bfdbfe">Gerando...</span>'
+        ? '<span class="status-pill" style="background:#eff6ff;color:#1d4ed8;border-color:#bfdbfe"><span class="pulse-dot"></span> Gerando...</span>'
         : '<span class="status-pill status-error">Erro</span>';
       const postText = r.postSlug
         ? `${r.postSlug}${r.postId ? ` (#${r.postId})` : ""}`
@@ -987,7 +1034,10 @@ function agentProfileModal(agent: Agent, runs: Run[], blogs: Blog[]): string {
       const postCell = blogUrl
         ? `<a href="${escapeHtml(blogUrl)}" target="_blank" rel="noopener" style="font-weight:500;color:#0a84ff;text-decoration:none" title="Abrir post no blog">${escapeHtml(postText)} ↗</a>`
         : `<span title="${escapeHtml(postText)}">${escapeHtml(postText)}</span>`;
-      const errorText = r.error || (r.status === "running" ? "Em andamento..." : "—");
+
+      const diagBtn = `<button type="button" class="log-inspect-btn ${r.status === 'error' ? 'btn-error' : ''}" onclick="openRunDetails(${r.id})" title="Ver logs detalhados e diagnóstico desta execução">
+        ${r.status === 'error' ? '🔴 Diagnóstico' : r.status === 'running' ? '⏳ Acompanhar' : '📄 Ver Log'}
+      </button>`;
 
       return `<tr>
         <td>${fmtDate(r.startedAt)}</td>
@@ -996,7 +1046,7 @@ function agentProfileModal(agent: Agent, runs: Run[], blogs: Blog[]): string {
         <td title="${escapeHtml(r.model || '—')}">${escapeHtml(r.model || '—')}</td>
         <td>${r.tokensIn}+${r.tokensOut}</td>
         <td>${fmtCost(r.cost)}</td>
-        <td title="${escapeHtml(errorText)}">${escapeHtml(errorText)}</td>
+        <td>${diagBtn}</td>
       </tr>`;
     }).join("")
     : '<tr><td colspan="7" class="empty" style="text-align:center;padding:28px">Nenhuma publicação gerada por este agente ainda. Clique em "Executar Agora" para gerar a primeira!</td></tr>';
@@ -1017,6 +1067,17 @@ function agentProfileModal(agent: Agent, runs: Run[], blogs: Blog[]): string {
     </div>
     <a class="modal-close" href="#top">×</a>
   </div>
+
+  ${agent.lastError ? `<div class="diag-card" style="margin-top:12px;margin-bottom:14px">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px">
+      <div style="display:flex;align-items:center;gap:8px;font-weight:600;font-size:13px">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+        Alerta da Última Execução
+      </div>
+      ${agentRuns.length > 0 ? `<button type="button" class="log-inspect-btn btn-error" onclick="openRunDetails(${agentRuns[0].id})">🔍 Inspecionar Diagnóstico</button>` : ''}
+    </div>
+    <div style="font-size:12.5px;word-break:break-word">${escapeHtml(agent.lastError)}</div>
+  </div>` : ''}
 
   <!-- Ações e Configurações Rápidas -->
   <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;background:rgba(248,250,252,.8);border:1px solid rgba(148,154,170,.18);border-radius:14px;margin:14px 0">
@@ -1067,15 +1128,16 @@ function agentProfileModal(agent: Agent, runs: Run[], blogs: Blog[]): string {
         <col style="width:25%">
         <col style="width:75px">
         <col style="width:65px">
-        <col style="width:auto">
+        <col style="width:130px">
       </colgroup>
       <thead style="position:sticky;top:0;background:#f8f9fa;z-index:2">
-        <tr><th>Quando</th><th>Status</th><th>Post Publicado</th><th>Modelo</th><th>Tokens</th><th>Custo</th><th>Erro</th></tr>
+        <tr><th>Quando</th><th>Status</th><th>Post Publicado</th><th>Modelo</th><th>Tokens</th><th>Custo</th><th>Diagnóstico &amp; Logs</th></tr>
       </thead>
       <tbody>${rows}</tbody>
     </table>
   </div>
 </div></div>`;
+
 }
 
 function runsTable(runs: Run[], agents: Agent[] = []): string {
@@ -1088,12 +1150,12 @@ function runsTable(runs: Run[], agents: Agent[] = []): string {
     <col style="width:145px">
     <col style="width:90px">
     <col style="width:20%">
-    <col style="width:25%">
+    <col style="width:20%">
     <col style="width:75px">
     <col style="width:65px">
-    <col style="width:auto">
+    <col style="width:130px">
   </colgroup>
-  <thead><tr><th>Quando</th><th>Agente</th><th>Status</th><th>Post</th><th>Modelo</th><th>Tokens</th><th>Custo</th><th>Erro</th></tr></thead>
+  <thead><tr><th>Quando</th><th>Agente</th><th>Status</th><th>Post</th><th>Modelo</th><th>Tokens</th><th>Custo</th><th>Diagnóstico &amp; Logs</th></tr></thead>
   <tbody>${runs.map((r) => runRow(r, agents)).join("")}</tbody></table></div>`;
 }
 
@@ -1101,16 +1163,19 @@ function runRow(run: Run, agents: Agent[] = []): string {
   const pill = run.status === "success"
     ? '<span class="status-pill status-success">Sucesso</span>'
     : run.status === "running"
-    ? '<span class="status-pill" style="background:#eff6ff;color:#1d4ed8;border-color:#bfdbfe">Gerando...</span>'
+    ? '<span class="status-pill" style="background:#eff6ff;color:#1d4ed8;border-color:#bfdbfe"><span class="pulse-dot"></span> Gerando...</span>'
     : '<span class="status-pill status-error">Erro</span>';
   const post = run.postSlug
     ? `${run.postSlug}${run.postId ? ` (#${run.postId})` : ""}`
     : run.title ?? "—";
   const model = run.model || "—";
-  const error = run.error || (run.status === "running" ? "Em andamento..." : "—");
   const agent = agents.find((a) => a.id === run.agentId);
   const agentName = agent ? agent.name : `Agente #${run.agentId}`;
   const agentAvatar = agent ? renderAvatar(agent.avatar, 22) : "";
+
+  const diagBtn = `<button type="button" class="log-inspect-btn ${run.status === 'error' ? 'btn-error' : ''}" onclick="openRunDetails(${run.id})" title="Ver logs detalhados e diagnóstico desta execução">
+    ${run.status === 'error' ? '🔴 Diagnóstico' : run.status === 'running' ? '⏳ Acompanhar' : '📄 Ver Log'}
+  </button>`;
 
   return `<tr>
   <td>${fmtDate(run.startedAt)}</td>
@@ -1125,7 +1190,7 @@ function runRow(run: Run, agents: Agent[] = []): string {
   <td title="${escapeHtml(model)}">${escapeHtml(model)}</td>
   <td>${run.tokensIn}+${run.tokensOut}</td>
   <td>${fmtCost(run.cost)}</td>
-  <td title="${escapeHtml(error)}">${escapeHtml(error)}</td>
+  <td>${diagBtn}</td>
 </tr>`;
 }
 
@@ -1163,13 +1228,13 @@ function allRunsModal(runs: Run[], agents: Agent[] = []): string {
           <col style="width:145px">
           <col style="width:90px">
           <col style="width:20%">
-          <col style="width:24%">
+          <col style="width:20%">
           <col style="width:75px">
           <col style="width:65px">
-          <col style="width:auto">
+          <col style="width:130px">
         </colgroup>
         <thead style="position:sticky;top:0;background:#f8f9fa;z-index:2">
-          <tr><th>Quando</th><th>Agente</th><th>Status</th><th>Post</th><th>Modelo</th><th>Tokens</th><th>Custo</th><th>Erro</th></tr>
+          <tr><th>Quando</th><th>Agente</th><th>Status</th><th>Post</th><th>Modelo</th><th>Tokens</th><th>Custo</th><th>Diagnóstico &amp; Logs</th></tr>
         </thead>
         <tbody id="all-runs-tbody">
           ${runs.map((r) => allRunsRow(r, agents)).join("")}
@@ -1187,7 +1252,7 @@ function allRunsRow(run: Run, agents: Agent[] = []): string {
   const pill = run.status === "success"
     ? '<span class="status-pill status-success">Sucesso</span>'
     : run.status === "running"
-    ? '<span class="status-pill" style="background:#eff6ff;color:#1d4ed8;border-color:#bfdbfe">Gerando...</span>'
+    ? '<span class="status-pill" style="background:#eff6ff;color:#1d4ed8;border-color:#bfdbfe"><span class="pulse-dot"></span> Gerando...</span>'
     : '<span class="status-pill status-error">Erro</span>';
   const post = run.postSlug
     ? `${run.postSlug}${run.postId ? ` (#${run.postId})` : ""}`
@@ -1198,6 +1263,10 @@ function allRunsRow(run: Run, agents: Agent[] = []): string {
   const agentName = agent ? agent.name : `Agente #${run.agentId}`;
   const agentAvatar = agent ? renderAvatar(agent.avatar, 22) : "";
   const searchBlob = `${fmtDate(run.startedAt)} ${agentName} Agente #${run.agentId} ${run.status} ${post} ${model} ${error}`;
+
+  const diagBtn = `<button type="button" class="log-inspect-btn ${run.status === 'error' ? 'btn-error' : ''}" onclick="openRunDetails(${run.id})" title="Ver logs detalhados e diagnóstico desta execução">
+    ${run.status === 'error' ? '🔴 Diagnóstico' : run.status === 'running' ? '⏳ Acompanhar' : '📄 Ver Log'}
+  </button>`;
 
   return `<tr class="all-runs-row" data-search="${escapeHtml(searchBlob)}" data-status="${escapeHtml(run.status)}">
   <td>${fmtDate(run.startedAt)}</td>
@@ -1212,7 +1281,7 @@ function allRunsRow(run: Run, agents: Agent[] = []): string {
   <td title="${escapeHtml(model)}">${escapeHtml(model)}</td>
   <td>${run.tokensIn}+${run.tokensOut}</td>
   <td>${fmtCost(run.cost)}</td>
-  <td title="${escapeHtml(error)}">${escapeHtml(error)}</td>
+  <td>${diagBtn}</td>
 </tr>`;
 }
 
@@ -1997,6 +2066,93 @@ export function databasePage(data: DatabasePageData): Response {
 </main></body></html>`);
 }
 
+export function renderLogsTab(agents: Agent[]): string {
+  return `
+  <div class="card" style="padding:22px">
+    <div class="section-head" style="margin-bottom:16px">
+      <div>
+        <p class="eyebrow">Observabilidade &amp; Diagnóstico</p>
+        <h2>Logs do Sistema em Tempo Real</h2>
+        <p class="muted">Acompanhe cada etapa de execução dos agentes, chamadas às APIs de IA, requisições de blog e erros com diagnóstico detalhado.</p>
+      </div>
+      <div class="section-actions">
+        <label style="display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--c-text-soft);cursor:pointer;user-select:none;margin-right:8px">
+          <input type="checkbox" id="syslog-auto-refresh" checked style="width:15px;height:15px">
+          Auto-refresh (3s)
+        </label>
+        <button type="button" class="button button-sm button-secondary" id="btn-refresh-logs" onclick="loadSystemLogs()">
+          🔄 Atualizar Agora
+        </button>
+        <button type="button" class="button button-sm button-secondary" id="btn-copy-logs" onclick="copySystemLogs()">
+          📋 Copiar Logs
+        </button>
+        <button type="button" class="button button-sm button-secondary" id="btn-clear-logs" onclick="clearSystemLogs()" style="color:var(--c-danger)">
+          🗑️ Limpar
+        </button>
+      </div>
+    </div>
+
+    <!-- Filters Bar -->
+    <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px;padding:10px 14px;background:var(--c-bg);border-radius:12px;border:1px solid var(--c-border)">
+      <div style="display:flex;flex-wrap:wrap;align-items:center;gap:6px">
+        <span style="font-size:12px;font-weight:600;color:var(--c-text-soft);margin-right:4px">Nível:</span>
+        <button type="button" class="log-level-btn active" data-level="" onclick="filterLogLevel('')">Todos</button>
+        <button type="button" class="log-level-btn" data-level="error" onclick="filterLogLevel('error')">❌ Erros</button>
+        <button type="button" class="log-level-btn" data-level="warn" onclick="filterLogLevel('warn')">⚠️ Avisos</button>
+        <button type="button" class="log-level-btn" data-level="success" onclick="filterLogLevel('success')">✅ Sucesso</button>
+        <button type="button" class="log-level-btn" data-level="info" onclick="filterLogLevel('info')">ℹ️ Info</button>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:220px;max-width:440px">
+        <select id="syslog-agent-filter" onchange="loadSystemLogs()" style="height:34px;font-size:12px;padding:0 8px;border-radius:8px">
+          <option value="">Todos os Agentes</option>
+          ${agents.map((a) => `<option value="${a.id}">${escapeHtml(a.name)} (#${a.id})</option>`).join("")}
+        </select>
+        <input type="text" id="syslog-search" placeholder="Pesquisar nos logs..." oninput="debounceLogsSearch()" style="height:34px;font-size:12px;padding:0 10px;border-radius:8px">
+      </div>
+    </div>
+
+    <!-- Terminal Container -->
+    <div id="syslog-terminal" class="syslog-terminal">
+      <div id="syslog-body" class="syslog-body">
+        <div style="text-align:center;padding:30px;color:#94a3b8">Carregando logs do sistema...</div>
+      </div>
+    </div>
+  </div>`;
+}
+
+export function runDetailsModal(): string {
+  return `
+  <div class="modal" id="run-details-modal" style="display:none;z-index:9999">
+    <div class="modal-backdrop" onclick="closeRunDetails()"></div>
+    <div class="modal-panel" style="max-width:920px;width:95vw;max-height:92vh;display:flex;flex-direction:column">
+      <div class="modal-head" style="flex-shrink:0;align-items:flex-start">
+        <div>
+          <p class="eyebrow" id="rd-eyebrow">Diagnóstico de Execução</p>
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <h2 id="rd-title" style="margin:0;font-size:20px">Execução #...</h2>
+            <span id="rd-status-pill" class="status-pill">—</span>
+          </div>
+          <p class="muted" id="rd-subtitle" style="margin-top:4px;font-size:13px"></p>
+        </div>
+        <button type="button" class="modal-close" onclick="closeRunDetails()" style="background:none;border:none;font-size:24px;cursor:pointer;line-height:1;color:var(--c-text-soft)">×</button>
+      </div>
+
+      <div id="rd-content" style="overflow-y:auto;flex:1;padding-right:4px;margin-top:12px">
+        <div style="text-align:center;padding:40px;color:var(--c-text-muted)">Carregando detalhes da execução...</div>
+      </div>
+
+      <div class="modal-foot" style="display:flex;align-items:center;justify-content:space-between;padding-top:14px;border-top:1px solid var(--c-border);margin-top:14px;flex-shrink:0">
+        <button type="button" class="button button-sm button-secondary" id="btn-copy-run-log" onclick="copyRunLog()">
+          📋 Copiar Log Completo
+        </button>
+        <button type="button" class="button button-sm button-secondary" onclick="closeRunDetails()">
+          Fechar
+        </button>
+      </div>
+    </div>
+  </div>`;
+}
+
 export interface AgentRankingItem {
   agent: Agent;
   blogName: string;
@@ -2207,6 +2363,322 @@ window.switchBlogRanking = function(blogId) {
 };
 </script>
 </body></html>`);
+}
+
+export function logsTabJs(): string {
+  return `
+<script>
+(function(){
+  var currentLogLevel = "";
+  var searchTimeout = null;
+  var lastLogsData = [];
+
+  window.filterLogLevel = function(level) {
+    currentLogLevel = level;
+    document.querySelectorAll(".log-level-btn").forEach(function(b){
+      b.classList.toggle("active", b.getAttribute("data-level") === level);
+    });
+    loadSystemLogs();
+  };
+
+  window.debounceLogsSearch = function() {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(loadSystemLogs, 300);
+  };
+
+  window.loadSystemLogs = function() {
+    var agentSelect = document.getElementById("syslog-agent-filter");
+    var searchInput = document.getElementById("syslog-search");
+    var body = document.getElementById("syslog-body");
+    if (!body) return;
+
+    var agentId = agentSelect ? agentSelect.value : "";
+    var search = searchInput ? searchInput.value.trim() : "";
+
+    var url = new URL("/admin/api/logs", window.location.origin);
+    url.searchParams.set("limit", "150");
+    if (currentLogLevel) url.searchParams.set("level", currentLogLevel);
+    if (agentId) url.searchParams.set("agentId", agentId);
+    if (search) url.searchParams.set("search", search);
+
+    fetch(url.toString())
+      .then(function(res){ return res.json(); })
+      .then(function(data){
+        if (!data || !Array.isArray(data.logs)) return;
+        lastLogsData = data.logs;
+        renderLogsList(data.logs);
+      })
+      .catch(function(err){
+        console.warn("Falha ao carregar logs:", err);
+      });
+  };
+
+  function renderLogsList(logs) {
+    var body = document.getElementById("syslog-body");
+    if (!body) return;
+
+    if (logs.length === 0) {
+      body.innerHTML = '<div style="text-align:center;padding:40px;color:#94a3b8">Nenhum registro de log encontrado para os filtros selecionados.</div>';
+      return;
+    }
+
+    var html = logs.map(function(item){
+      var time = item.timestamp ? item.timestamp.substring(11, 19) : "--:--:--";
+      var levelClass = "level-" + (item.level || "info");
+      var badgeClass = item.level || "info";
+      var badgeLabel = item.level === "error" ? "ERRO" : item.level === "warn" ? "AVISO" : item.level === "success" ? "OK" : "INFO";
+
+      var detailsHtml = "";
+      if (item.details) {
+        detailsHtml = '<details style="margin-top:4px"><summary style="cursor:pointer;color:#94a3b8;font-size:11px">Ver detalhes técnicos / stack trace</summary><div class="syslog-details">' + escapeHtmlJs(item.details) + '</div></details>';
+      }
+
+      return '<div class="syslog-entry ' + levelClass + '">' +
+        '<div class="syslog-meta">' +
+          '<span class="syslog-time">[' + time + ']</span>' +
+          '<span class="syslog-badge ' + badgeClass + '">' + badgeLabel + '</span>' +
+          '<span class="syslog-source">[' + escapeHtmlJs(item.source || "Sistema") + ']</span>' +
+          (item.runId ? '<button type="button" onclick="openRunDetails(' + item.runId + ')" style="background:none;border:none;color:#60a5fa;cursor:pointer;font-size:11px;text-decoration:underline;padding:0">Execução #' + item.runId + '</button>' : '') +
+        '</div>' +
+        '<div class="syslog-msg">' + escapeHtmlJs(item.message || "") + '</div>' +
+        detailsHtml +
+      '</div>';
+    }).join("");
+
+    body.innerHTML = html;
+  }
+
+  function escapeHtmlJs(str) {
+    if (!str) return "";
+    return String(str)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
+
+  window.copySystemLogs = function() {
+    if (!lastLogsData || lastLogsData.length === 0) {
+      alert("Nenhum log para copiar.");
+      return;
+    }
+    var text = lastLogsData.map(function(l){
+      var t = l.timestamp ? l.timestamp.substring(11, 19) : "";
+      var res = "[" + t + "] [" + (l.level || "info").toUpperCase() + "] [" + (l.source || "") + "] " + l.message;
+      if (l.details) res += "\\n   " + l.details.replace(/\\n/g, "\\n   ");
+      return res;
+    }).join("\\n");
+
+    navigator.clipboard.writeText(text).then(function(){
+      var btn = document.getElementById("btn-copy-logs");
+      if (btn) {
+        var original = btn.innerHTML;
+        btn.innerHTML = "✅ Copiado!";
+        setTimeout(function(){ btn.innerHTML = original; }, 2000);
+      }
+    });
+  };
+
+  window.clearSystemLogs = function() {
+    if (!confirm("Deseja realmente limpar o histórico de logs em memória?")) return;
+    fetch("/admin/api/logs/clear", { method: "POST" })
+      .then(function(){ loadSystemLogs(); });
+  };
+
+  function checkAutoRefresh() {
+    var checkbox = document.getElementById("syslog-auto-refresh");
+    var isLogsTab = document.getElementById("tab-logs") && document.getElementById("tab-logs").classList.contains("active");
+    if (checkbox && checkbox.checked && isLogsTab) {
+      loadSystemLogs();
+    }
+  }
+
+  setInterval(checkAutoRefresh, 3500);
+
+  // Auto carregar quando clicar na aba logs
+  document.addEventListener("click", function(e){
+    var target = e.target && e.target.closest && e.target.closest("[data-tab='logs']");
+    if (target) {
+      setTimeout(loadSystemLogs, 100);
+    }
+  });
+
+  document.addEventListener("DOMContentLoaded", function(){
+    loadSystemLogs();
+  });
+})();
+</script>`;
+}
+
+export function runDetailsModalJs(): string {
+  return `
+<script>
+(function(){
+  var currentRunLogs = "";
+
+  function escapeHtml(str) {
+    if (!str) return "";
+    return String(str)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
+
+  window.openRunDetails = function(runId) {
+    var modal = document.getElementById("run-details-modal");
+    var title = document.getElementById("rd-title");
+    var subtitle = document.getElementById("rd-subtitle");
+    var statusPill = document.getElementById("rd-status-pill");
+    var content = document.getElementById("rd-content");
+    if (!modal) return;
+
+    modal.style.display = "flex";
+    if (title) title.innerText = "Execução #" + runId;
+    if (subtitle) subtitle.innerText = "Carregando dados da execução...";
+    if (content) content.innerHTML = '<div style="text-align:center;padding:40px;color:var(--c-text-muted)"><div class="spinner" style="margin-bottom:8px"></div>Obtendo diagnóstico e logs completos...</div>';
+    currentRunLogs = "";
+
+    fetch("/admin/api/runs/" + runId)
+      .then(function(res){
+        if (!res.ok) throw new Error("Execução não encontrada ou erro no servidor");
+        return res.json();
+      })
+      .then(function(data){
+        var run = data.run;
+        var agentName = data.agentName || ("Agente #" + run.agentId);
+
+        if (title) title.innerText = "Execução #" + run.id + " — " + agentName;
+
+        var start = run.startedAt ? new Date(run.startedAt) : null;
+        var finish = run.finishedAt ? new Date(run.finishedAt) : null;
+        var durationStr = "—";
+        if (start && finish) {
+          var durMs = finish.getTime() - start.getTime();
+          var durSec = Math.max(0, Math.round(durMs / 1000));
+          durationStr = durSec + "s";
+        } else if (run.status === "running") {
+          durationStr = "Em andamento...";
+        }
+
+        var dateStr = start ? start.toLocaleString("pt-BR") : "—";
+        if (subtitle) {
+          subtitle.innerText = "Iniciada em " + dateStr + " • Duração: " + durationStr;
+        }
+
+        if (statusPill) {
+          if (run.status === "success") {
+            statusPill.className = "status-pill status-success";
+            statusPill.innerText = "Sucesso";
+          } else if (run.status === "running") {
+            statusPill.className = "status-pill";
+            statusPill.style.background = "#eff6ff";
+            statusPill.style.color = "#1d4ed8";
+            statusPill.style.borderColor = "#bfdbfe";
+            statusPill.innerHTML = '<span class="pulse-dot"></span> Gerando...';
+          } else {
+            statusPill.className = "status-pill status-error";
+            statusPill.innerText = "Erro";
+          }
+        }
+
+        currentRunLogs = run.logs || "";
+
+        // Diagnostic card for error
+        var diagHtml = "";
+        if (run.status === "error" || run.error) {
+          var errMsg = run.error || "Erro durante o processamento da requisição.";
+          var hint = "Verifique os parâmetros do agente e as chaves de API.";
+          if (errMsg.indexOf("401") !== -1 || errMsg.indexOf("Unauthorized") !== -1 || errMsg.indexOf("token") !== -1) {
+            hint = "Erro de autorização (401). Verifique se o Token da API do Blog está correto em Configurações > Blogs, ou se sua chave do OpenRouter é válida.";
+          } else if (errMsg.indexOf("429") !== -1 || errMsg.indexOf("Rate limit") !== -1) {
+            hint = "Limite de requisições excedido (429). Adicione chaves reservas do OpenRouter em Configurações > Multi-Chaves ou aumente o cooldown entre posts.";
+          } else if (errMsg.indexOf("reinício") !== -1 || errMsg.indexOf("interrompida") !== -1) {
+            hint = "A execução foi interrompida porque o servidor ou a instância do Deno Deploy reiniciou enquanto o agente estava trabalhando.";
+          } else if (errMsg.indexOf("Nenhum blog") !== -1 || errMsg.indexOf("Blog") !== -1) {
+            hint = "Associe um blog ao agente na opção 'Editar' para que ele possa publicar artigos.";
+          }
+
+          diagHtml = '<div class="diag-card">' +
+            '<div style="display:flex;align-items:center;gap:8px;font-weight:600;font-size:13.5px;margin-bottom:6px">' +
+              '<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>' +
+              'Diagnóstico de Falha' +
+            '</div>' +
+            '<div style="font-size:13px;font-weight:500;margin-bottom:6px;word-break:break-word">' + escapeHtml(errMsg) + '</div>' +
+            '<div style="font-size:12px;color:#7f1d1d;line-height:1.4;background:rgba(255,255,255,.6);padding:8px 10px;border-radius:8px;border:1px solid rgba(239,68,68,.2)">' +
+              '💡 <strong>Recomendação:</strong> ' + escapeHtml(hint) +
+            '</div>' +
+          '</div>';
+        }
+
+        // Metrics Grid
+        var metricsHtml = '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:16px">' +
+          '<div style="padding:10px 12px;background:var(--c-bg);border:1px solid var(--c-border);border-radius:10px">' +
+            '<div style="font-size:11px;color:var(--c-text-muted);text-transform:uppercase">Modelo IA</div>' +
+            '<div style="font-size:12.5px;font-weight:600;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + escapeHtml(run.model || "—") + '">' + escapeHtml(run.model || "—") + '</div>' +
+          '</div>' +
+          '<div style="padding:10px 12px;background:var(--c-bg);border:1px solid var(--c-border);border-radius:10px">' +
+            '<div style="font-size:11px;color:var(--c-text-muted);text-transform:uppercase">Tokens (Entrada+Saída)</div>' +
+            '<div style="font-size:13px;font-weight:600;margin-top:2px">' + (run.tokensIn || 0) + ' + ' + (run.tokensOut || 0) + '</div>' +
+          '</div>' +
+          '<div style="padding:10px 12px;background:var(--c-bg);border:1px solid var(--c-border);border-radius:10px">' +
+            '<div style="font-size:11px;color:var(--c-text-muted);text-transform:uppercase">Custo em USD</div>' +
+            '<div style="font-size:13px;font-weight:600;margin-top:2px;color:var(--c-success)">$' + (Number(run.cost || 0).toFixed(4)) + '</div>' +
+          '</div>' +
+          '<div style="padding:10px 12px;background:var(--c-bg);border:1px solid var(--c-border);border-radius:10px">' +
+            '<div style="font-size:11px;color:var(--c-text-muted);text-transform:uppercase">Post Gerado</div>' +
+            '<div style="font-size:12.5px;font-weight:500;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + escapeHtml(run.title || run.postSlug || "—") + '">' + escapeHtml(run.title || run.postSlug || "—") + '</div>' +
+          '</div>' +
+        '</div>';
+
+        // Logs terminal box
+        var logsDisplay = run.logs
+          ? '<div class="run-log-terminal">' + escapeHtml(run.logs) + '</div>'
+          : '<div style="padding:24px;text-align:center;background:var(--c-bg);border-radius:10px;border:1px dashed var(--c-border);color:var(--c-text-muted)">Nenhum log textual persistido para esta execução.</div>';
+
+        if (content) {
+          content.innerHTML = diagHtml + metricsHtml +
+            '<div style="font-size:12.5px;font-weight:600;color:var(--c-text);margin-bottom:6px;display:flex;align-items:center;justify-content:space-between">' +
+              '<span>Log Passo a Passo da Execução:</span>' +
+            '</div>' +
+            logsDisplay;
+        }
+      })
+      .catch(function(err){
+        if (content) {
+          content.innerHTML = '<div style="padding:20px;color:var(--c-danger);text-align:center">Erro ao carregar detalhes: ' + escapeHtml(err.message) + '</div>';
+        }
+      });
+  };
+
+  window.closeRunDetails = function() {
+    var modal = document.getElementById("run-details-modal");
+    if (modal) modal.style.display = "none";
+  };
+
+  window.copyRunLog = function() {
+    if (!currentRunLogs) {
+      alert("Nenhum log disponível para copiar.");
+      return;
+    }
+    navigator.clipboard.writeText(currentRunLogs).then(function(){
+      var btn = document.getElementById("btn-copy-run-log");
+      if (btn) {
+        var original = btn.innerHTML;
+        btn.innerHTML = "✅ Copiado!";
+        setTimeout(function(){ btn.innerHTML = original; }, 2000);
+      }
+    });
+  };
+
+  // Close on Escape key
+  document.addEventListener("keydown", function(e){
+    if (e.key === "Escape") closeRunDetails();
+  });
+})();
+</script>`;
 }
 
 export function renderCreatePostTab(data: DashboardData): string {

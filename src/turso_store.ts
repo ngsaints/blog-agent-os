@@ -85,6 +85,7 @@ export interface Run {
   tokensOut: number;
   cost: number;
   error: string | null;
+  logs?: string | null;
   startedAt: string;
   finishedAt: string | null;
 }
@@ -111,6 +112,7 @@ export interface RunFinishFields {
   tokensOut?: number;
   cost?: number;
   error?: string | null;
+  logs?: string | null;
   finishedAt: string;
 }
 
@@ -190,6 +192,7 @@ export interface SqlStore {
   bumpPostCount(id: number): Promise<void>;
   addRun(agentId: number, startedAt: string): Promise<number>;
   finishRun(id: number, fields: RunFinishFields): Promise<void>;
+  getRun(id: number): Promise<Run | null>;
   listRuns(limit?: number, agentId?: number): Promise<Run[]>;
   getStats(): Promise<Stats>;
   getSettings(): Promise<Record<string, string>>;
@@ -287,10 +290,17 @@ export function toAgent(row: Row): Agent {
 }
 
 export function toRun(row: Row): Run {
+  const statusStr = str(row.status);
+  const status: RunStatus = statusStr === "success"
+    ? "success"
+    : statusStr === "running"
+    ? "running"
+    : "error";
+
   return {
     id: num(row.id),
     agentId: num(row.agent_id),
-    status: (str(row.status) === "success" ? "success" : "error") as RunStatus,
+    status,
     model: str(row.model),
     postId: row.post_id === null ? null : num(row.post_id),
     postSlug: nullableStr(row.post_slug),
@@ -299,6 +309,7 @@ export function toRun(row: Row): Run {
     tokensOut: num(row.tokens_out),
     cost: num(row.cost),
     error: nullableStr(row.error),
+    logs: nullableStr(row.logs),
     startedAt: str(row.started_at),
     finishedAt: nullableStr(row.finished_at),
   };
@@ -442,6 +453,20 @@ export class TursoStore implements SqlStore {
       );
     } catch {
       // coluna já existe
+    }
+    try {
+      await this.client.execute(
+        `ALTER TABLE runs ADD COLUMN logs TEXT`,
+      );
+    } catch {
+      // coluna já existe
+    }
+    try {
+      await this.client.execute(
+        `UPDATE runs SET status = 'error', error = 'Execução interrompida por reinício da instância' WHERE status = 'running'`,
+      );
+    } catch {
+      // ignore
     }
   }
 
@@ -647,7 +672,7 @@ export class TursoStore implements SqlStore {
     await this.client.execute({
       sql: `UPDATE runs SET
         status = ?, model = ?, post_id = ?, post_slug = ?, title = ?,
-        tokens_in = ?, tokens_out = ?, cost = ?, error = ?, finished_at = ?
+        tokens_in = ?, tokens_out = ?, cost = ?, error = ?, logs = ?, finished_at = ?
         WHERE id = ?`,
       args: [
         fields.status,
@@ -659,10 +684,20 @@ export class TursoStore implements SqlStore {
         fields.tokensOut ?? 0,
         fields.cost ?? 0,
         fields.error ?? null,
+        fields.logs ?? null,
         fields.finishedAt,
         id,
       ],
     });
+  }
+
+  async getRun(id: number): Promise<Run | null> {
+    const res = await this.client.execute({
+      sql: `SELECT * FROM runs WHERE id = ?`,
+      args: [id],
+    });
+    if (res.rows.length === 0) return null;
+    return toRun(res.rows[0] as Row);
   }
 
   async listRuns(limit = 20, agentId?: number): Promise<Run[]> {

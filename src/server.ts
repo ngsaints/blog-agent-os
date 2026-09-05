@@ -6,6 +6,7 @@ import { BlogApiClient, type CategoryInfo, normalizeBlogBaseUrl } from "./blog_a
 import type { AgentRunner } from "./scheduler.ts";
 import { runAgentOnce } from "./agent.ts";
 import { isAgentRunning, runAgentNow, runDueAgents } from "./scheduler.ts";
+import { systemLogger } from "./logger.ts";
 import { type PanelSettings, SettingsService } from "./settings.ts";
 import { ChatService } from "./chat.ts";
 import { chatPage } from "./chat_page.ts";
@@ -341,16 +342,28 @@ export function createHandler(ctx: ServerContext): Handler {
       switch (action) {
         case "run": {
           if (isAgentRunning(id)) {
-            return redirect("/admin", "Este agente já está em execução.", true);
+            return redirect("/admin", "Este agente já está em execução no momento.", true);
           }
-          const started = await runAgentNow(ctx.store, ctx.runner, id);
-          return redirect(
-            "/admin",
-            started
-              ? `Execução do agente "${agent.name}" iniciada.`
-              : "Falha ao iniciar a execução.",
-            !started,
-          );
+          systemLogger.info("Dashboard", `Disparo manual do agente "${agent.name}" (#${id})`, undefined, { agentId: id });
+          try {
+            await runAgentNow(ctx.store, ctx.runner, id, true);
+            const fresh = await ctx.store.getAgent(id);
+            if (fresh?.lastError) {
+              return redirect(
+                "/admin",
+                `Falha na execução de "${agent.name}": ${fresh.lastError}. Verifique a aba de Logs.`,
+                true,
+              );
+            }
+            return redirect("/admin", `Execução de "${agent.name}" concluída com sucesso!`);
+          } catch (runErr) {
+            const msg = runErr instanceof Error ? runErr.message : String(runErr);
+            return redirect(
+              "/admin",
+              `Falha na execução de "${agent.name}": ${msg}. Verifique a aba de Logs.`,
+              true,
+            );
+          }
         }
         case "toggle": {
           const next = await ctx.store.toggleAgent(id);
@@ -654,6 +667,49 @@ REGRAS:
       }
     }
 
+    if (path === "/admin/api/logs" && method === "GET") {
+      if (!(await isAuthenticated(req, ctx.config))) return json({ error: "auth" }, 401);
+      const url = new URL(req.url);
+      const limit = Number(url.searchParams.get("limit") ?? "100") || 100;
+      const level = (url.searchParams.get("level") || undefined) as any;
+      const source = url.searchParams.get("source") || undefined;
+      const search = url.searchParams.get("search") || undefined;
+      const agentIdParam = url.searchParams.get("agentId");
+      const agentId = agentIdParam ? Number(agentIdParam) : undefined;
+      const runIdParam = url.searchParams.get("runId");
+      const runId = runIdParam ? Number(runIdParam) : undefined;
+
+      const entries = systemLogger.getEntries({
+        limit,
+        level,
+        source,
+        search,
+        agentId,
+        runId,
+      });
+      return json({ logs: entries, total: entries.length });
+    }
+
+    if (path === "/admin/api/logs/clear" && method === "POST") {
+      if (!(await isAuthenticated(req, ctx.config))) return json({ error: "auth" }, 401);
+      systemLogger.clear();
+      systemLogger.info("System", "Buffer de logs do sistema limpo pelo usuário.");
+      return json({ ok: true });
+    }
+
+    const runMatch = path.match(/^\/admin\/api\/runs\/(\d+)$/);
+    if (runMatch && method === "GET") {
+      if (!(await isAuthenticated(req, ctx.config))) return json({ error: "auth" }, 401);
+      const runId = Number(runMatch[1]);
+      const run = await ctx.store.getRun(runId);
+      if (!run) return json({ error: "Execução não encontrada." }, 404);
+      const agent = await ctx.store.getAgent(run.agentId);
+      return json({
+        run,
+        agentName: agent ? agent.name : `Agente #${run.agentId}`,
+      });
+    }
+
     return json({ error: "Não encontrado" }, 404);
   };
 }
@@ -842,17 +898,23 @@ export function makeRunner(
 ): AgentRunner {
   return async (agent) => {
     if (agent.role === "reviewer") {
-      await store.setLastError(agent.id, "Agentes com papel de Revisor são acionados automaticamente durante a publicação dos redatores.");
+      const msg = "Agentes com papel de Revisor são acionados automaticamente durante a publicação dos redatores.";
+      await store.setLastError(agent.id, msg);
+      systemLogger.warn(`Agente: ${agent.name}`, msg, undefined, { agentId: agent.id });
       return;
     }
     if (!agent.blogId) {
-      await store.setLastError(agent.id, "Nenhum blog definido para este agente.");
-      return;
+      const msg = "Nenhum blog associado a este agente. Vincule um blog em 'Editar Agente'.";
+      await store.setLastError(agent.id, msg);
+      systemLogger.error(`Agente: ${agent.name}`, msg, undefined, { agentId: agent.id });
+      throw new Error(msg);
     }
     const blog = await store.getBlog(agent.blogId);
     if (!blog) {
-      await store.setLastError(agent.id, "Blog deste agente não encontrado.");
-      return;
+      const msg = `Blog associado (#${agent.blogId}) não encontrado no banco de dados.`;
+      await store.setLastError(agent.id, msg);
+      systemLogger.error(`Agente: ${agent.name}`, msg, undefined, { agentId: agent.id });
+      throw new Error(msg);
     }
     const client = new BlogApiClient(blog.baseUrl, blog.token);
     await runAgentOnce(agent, openrouter, pexels, client, store, "", settings);

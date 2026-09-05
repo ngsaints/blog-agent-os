@@ -87,7 +87,7 @@ export function normalizeBlogBaseUrl(raw: string): string {
 }
 
 export class BlogApiClient {
-  private baseUrl: string;
+  public readonly baseUrl: string;
   private token: string;
 
   constructor(

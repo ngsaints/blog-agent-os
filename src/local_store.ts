@@ -201,6 +201,11 @@ export class LocalSqliteStore implements SqlStore {
     } catch {
       // coluna já existe
     }
+    try {
+      this.db.exec(`ALTER TABLE runs ADD COLUMN logs TEXT`);
+    } catch {
+      // coluna já existe
+    }
   }
 
   async listBlogs(): Promise<Blog[]> {
@@ -316,7 +321,7 @@ export class LocalSqliteStore implements SqlStore {
     this.db.prepare(
       `UPDATE runs SET
         status = ?, model = ?, post_id = ?, post_slug = ?, title = ?,
-        tokens_in = ?, tokens_out = ?, cost = ?, error = ?, finished_at = ?
+        tokens_in = ?, tokens_out = ?, cost = ?, error = ?, logs = ?, finished_at = ?
         WHERE id = ?`,
     ).run(
       fields.status,
@@ -328,9 +333,15 @@ export class LocalSqliteStore implements SqlStore {
       fields.tokensOut ?? 0,
       fields.cost ?? 0,
       fields.error ?? null,
+      fields.logs ?? null,
       fields.finishedAt,
       id,
     );
+  }
+
+  async getRun(id: number): Promise<Run | null> {
+    const row = this.db.prepare(`SELECT * FROM runs WHERE id = ?`).get(id);
+    return row ? toRun(row as Row) : null;
   }
 
   async listRuns(limit = 20, agentId?: number): Promise<Run[]> {

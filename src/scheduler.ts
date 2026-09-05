@@ -1,4 +1,5 @@
 import type { Agent, SqlStore } from "./turso_store.ts";
+import { systemLogger } from "./logger.ts";
 
 export type AgentRunner = (agent: Agent) => Promise<void>;
 
@@ -36,15 +37,17 @@ export async function runDueAgents(
     const dailyStats = await store.getDailyStats();
 
     if (maxGlobal > 0 && dailyStats.totalPostsToday >= maxGlobal) {
-      console.warn(
-        `[Scheduler] Limite diário global de posts atingido hoje (${dailyStats.totalPostsToday}/${maxGlobal}). Aguardando próximo dia.`,
+      systemLogger.warn(
+        "Scheduler",
+        `Limite diário global de posts atingido hoje (${dailyStats.totalPostsToday}/${maxGlobal}). Aguardando próximo dia.`,
       );
       return { agents: [], count: 0 };
     }
 
     if (dailyBudget > 0 && dailyStats.totalCostUsdToday >= dailyBudget) {
-      console.warn(
-        `[Scheduler] Teto de orçamento diário de IA atingido hoje ($${dailyStats.totalCostUsdToday.toFixed(4)}/$${dailyBudget.toFixed(2)}). Execuções pausadas até amanhã.`,
+      systemLogger.warn(
+        "Scheduler",
+        `Teto de orçamento diário de IA atingido hoje ($${dailyStats.totalCostUsdToday.toFixed(4)}/$${dailyBudget.toFixed(2)}). Execuções pausadas até amanhã.`,
       );
       return { agents: [], count: 0 };
     }
@@ -63,6 +66,10 @@ export async function runDueAgents(
       return true;
     });
 
+    if (due.length > 0) {
+      systemLogger.info("Scheduler", `Disparando ${due.length} agente(s) devidos: ${due.map((a) => a.name).join(", ")}`);
+    }
+
     const jobs = due.map((agent, index) => async () => {
       if (index > 0 && cooldownSec > 0) {
         await new Promise((resolve) => setTimeout(resolve, cooldownSec * 1000));
@@ -71,7 +78,7 @@ export async function runDueAgents(
       try {
         await runner(agent);
       } catch (err) {
-        console.error(`[${agent.name}] Erro inesperado: ${err}`);
+        systemLogger.error(`Agente: ${agent.name}`, `Erro inesperado na execução agendada: ${err instanceof Error ? err.message : err}`, err instanceof Error ? err.stack : undefined, { agentId: agent.id });
       } finally {
         inFlight.delete(agent.id);
       }
@@ -92,20 +99,29 @@ export async function runAgentNow(
   store: SqlStore,
   runner: AgentRunner,
   agentId: number,
+  awaitExecution = false,
 ): Promise<boolean> {
   if (inFlight.has(agentId)) return false;
   const agent = await store.getAgent(agentId);
   if (!agent) return false;
   inFlight.add(agentId);
-  void (async () => {
+
+  const task = async () => {
     try {
       await runner(agent);
     } catch (err) {
-      console.error(`[${agent.name}] Erro inesperado: ${err}`);
+      systemLogger.error(`Agente: ${agent.name}`, `Erro inesperado: ${err instanceof Error ? err.message : err}`, err instanceof Error ? err.stack : undefined, { agentId });
     } finally {
       inFlight.delete(agentId);
     }
-  })();
+  };
+
+  if (awaitExecution) {
+    await task();
+    return true;
+  }
+
+  void task();
   return true;
 }
 
