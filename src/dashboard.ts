@@ -267,58 +267,100 @@ tbody tr{transition:background .12s ease}tbody tr:hover{background:var(--c-bg)}
 .badge-25d-inner{width:100%;height:100%;border-radius:50%;overflow:hidden;display:grid;place-items:center;background:#ffffff;padding:2px;box-sizing:border-box;position:relative}
 .badge-25d-inner img{width:100%;height:100%;border-radius:50%;object-fit:cover;display:block}
 .badge-25d-inner>div{width:100%;height:100%;border-radius:50%;overflow:hidden;display:grid;place-items:center}
-.badge-gold{background:linear-gradient(135deg,#fffbeb 0%,#fde68a 30%,#f59e0b 70%,#b45309 100%);box-shadow:0 10px 25px -2px rgba(245,158,11,.45)}
-.badge-silver{background:linear-gradient(135deg,#ffffff 0%,#e2e8f0 40%,#94a3b8 80%,#64748b 100%);box-shadow:0 10px 25px -2px rgba(148,163,184,.45)}
-.badge-bronze{background:linear-gradient(135deg,#ffedd5 0%,#fed7aa 35%,#d97706 75%,#9a3412 100%);box-shadow:0 10px 25px -2px rgba(217,119,6,.45)}
+.badge-gold{background:linear-gradient(135deg,#fde68a 0%,#f59e0b 50%,#b45309 100%);box-shadow:0 6px 18px -2px rgba(217,119,6,.32)}
+.badge-silver{background:linear-gradient(135deg,#ffffff 0%,#cbd5e1 50%,#64748b 100%);box-shadow:0 6px 18px -2px rgba(100,116,139,.28)}
+.badge-bronze{background:linear-gradient(135deg,#ffedd5 0%,#d97706 50%,#78350f 100%);box-shadow:0 6px 18px -2px rgba(180,83,9,.28)}
 .avatar-ring{display:inline-flex;border-radius:50%;padding:2px;background:linear-gradient(135deg,var(--c-accent),#7c3aed)}
-/* === Ranking & Podium === */
-.ranking-hero{overflow:hidden;background:linear-gradient(145deg,#ffffff 0%,#fbfcfe 58%,#fffaf1 100%);border-color:rgba(148,163,184,.18);box-shadow:0 20px 60px rgba(30,41,59,.08)}
-.ranking-hero::before{content:"";position:absolute;width:360px;height:360px;right:-140px;top:-190px;border-radius:50%;background:radial-gradient(circle,rgba(148,163,184,.14),rgba(148,163,184,0) 68%);pointer-events:none}
-.ranking-hero::after{content:"";position:absolute;width:280px;height:280px;left:-130px;bottom:-190px;border-radius:50%;background:radial-gradient(circle,rgba(245,158,11,.14),rgba(245,158,11,0) 70%);pointer-events:none}
-.ranking-hero-head{display:flex;align-items:flex-start;justify-content:space-between;gap:24px;margin-bottom:22px;position:relative;z-index:1}
-.ranking-title-wrap{max-width:700px}
-.ranking-title{font-size:clamp(23px,3vw,34px)!important;font-weight:650!important;letter-spacing:-.04em;line-height:1.12;margin:5px 0 8px!important;color:#111827}
-.ranking-description{font-size:13.5px!important;line-height:1.55;max-width:650px}
-.ranking-live{display:inline-flex;align-items:center;gap:7px;padding:7px 11px;border-radius:999px;background:rgba(255,255,255,.72);border:1px solid rgba(148,163,184,.18);color:#475569;font-size:11px;font-weight:650;white-space:nowrap;box-shadow:0 8px 24px rgba(30,41,59,.06);backdrop-filter:blur(10px)}
-.ranking-live::before{content:"";width:7px;height:7px;border-radius:50%;background:#22c55e;box-shadow:0 0 0 4px rgba(34,197,94,.13)}
-.ranking-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:20px;position:relative;z-index:1}
-.ranking-stat{padding:13px 14px;border-radius:14px;background:rgba(255,255,255,.7);border:1px solid rgba(255,255,255,.9);box-shadow:0 8px 25px rgba(30,41,59,.05);backdrop-filter:blur(12px)}
-.ranking-stat-label{font-size:10.5px;text-transform:uppercase;letter-spacing:.08em;color:#7c8598;font-weight:650;margin-bottom:5px}
-.ranking-stat-value{font-size:20px;line-height:1;font-weight:700;letter-spacing:-.035em;color:#172033}
-.ranking-stat-value span{font-size:11px;font-weight:500;color:#8a93a5;letter-spacing:0;margin-left:3px}
-.podium-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;align-items:end;margin:30px 0 4px;position:relative;z-index:1}
-.podium-card{position:relative;display:flex;flex-direction:column;align-items:center;text-align:center;min-height:218px;padding:28px 18px 20px;border-radius:22px;background:rgba(255,255,255,.78);border:1px solid rgba(148,163,184,.18);box-shadow:0 16px 42px rgba(30,41,59,.08);transition:transform .25s cubic-bezier(.2,.8,.2,1),box-shadow .25s ease;backdrop-filter:blur(14px);box-sizing:border-box}
-.podium-card::after{content:"";position:absolute;inset:auto 24px 0;height:3px;border-radius:6px 6px 0 0;background:#94a3b8;opacity:.55}
-.podium-card:hover{transform:translateY(-6px);box-shadow:0 24px 54px rgba(30,41,59,.13)}
-.podium-1st{order:2;min-height:246px;padding-top:32px;border-color:rgba(245,158,11,.4);background:linear-gradient(155deg,#fffdf7 0%,#fff7dc 54%,#fffbeb 100%);box-shadow:0 24px 55px rgba(180,120,20,.16)}
-.podium-1st::before{content:"";position:absolute;inset:0;border-radius:inherit;background:radial-gradient(circle at 50% 0,rgba(251,191,36,.18),transparent 44%);pointer-events:none}
-.podium-1st::after{background:linear-gradient(90deg,#f59e0b,#fde68a);opacity:1;height:4px}
-.podium-2nd{order:1}.podium-2nd::after{background:linear-gradient(90deg,#94a3b8,#e2e8f0)}
-.podium-3rd{order:3}.podium-3rd::after{background:linear-gradient(90deg,#c26b35,#fdba74)}
-.podium-rank-badge{position:absolute;top:-14px;display:inline-flex;align-items:center;gap:5px;padding:6px 12px;border-radius:999px;font-size:10.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#fff;box-shadow:0 8px 20px rgba(15,23,42,.18),inset 0 1px 0 rgba(255,255,255,.3)}
-.rank-gold{background:linear-gradient(135deg,#fbbf24,#d97706)}.rank-silver{background:linear-gradient(135deg,#8390a3,#536176)}.rank-bronze{background:linear-gradient(135deg,#ea8a47,#a84316)}
-.podium-name{font-size:15px;font-weight:650;margin:12px 0 5px;color:#172033;letter-spacing:-.015em}
-.podium-1st .podium-name{color:#3f321b;font-size:18px}
-.podium-blog{display:inline-flex;align-items:center;gap:6px;margin-bottom:8px}
-.podium-1st .cat-chip{background:#fff8df!important;border-color:#f6d98c!important;color:#92400e!important}
-.podium-score{font-size:28px;font-weight:700;letter-spacing:-.045em;color:#172033;margin:7px 0 3px}
-.podium-score span{font-size:11px;font-weight:600;color:#8a93a5;letter-spacing:.02em;text-transform:uppercase}
-.podium-1st .podium-score{color:#a9480b;font-size:34px}.podium-1st .podium-score span{color:#b45309}
-.podium-sub{font-size:11px;line-height:1.45;color:#8a93a5}.podium-1st .podium-sub{color:#78350f}
-.ranking-table-card{padding:0;overflow:hidden;border-color:rgba(148,163,184,.17);box-shadow:0 16px 48px rgba(30,41,59,.07)}
-.ranking-table-head{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;padding:22px 24px 18px;border-bottom:1px solid rgba(148,163,184,.15)}
+/* === Ranking Arena (Executive Infographic & Performance Benchmark) === */
+.ranking-hero{overflow:hidden;background:var(--c-surface);border:1px solid var(--c-border);box-shadow:var(--shadow-sm);border-radius:var(--radius-xl);padding:24px 24px 20px;position:relative}
+.ranking-hero-head{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;margin-bottom:20px;flex-wrap:wrap}
+.ranking-title{font-size:clamp(22px,2.6vw,28px)!important;font-weight:650!important;letter-spacing:-.03em;line-height:1.2;margin:4px 0 6px!important;color:var(--c-text)}
+.ranking-description{font-size:13px!important;line-height:1.55;color:var(--c-text-soft);max-width:680px}
+.ranking-live{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:999px;background:rgba(0,0,0,.03);border:1px solid var(--c-border);color:var(--c-text-soft);font-size:11.5px;font-weight:500;white-space:nowrap}
+.ranking-live::before{content:"";width:6.5px;height:6.5px;border-radius:50%;background:#10b981;box-shadow:0 0 0 3px rgba(16,185,129,.18)}
+.ranking-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin:20px 0 24px}
+.ranking-stat{padding:14px 16px;border-radius:var(--radius);background:var(--c-bg);border:1px solid var(--c-border-light);box-shadow:var(--shadow-xs);transition:transform .18s ease,border-color .18s ease}
+.ranking-stat:hover{border-color:var(--c-border);transform:translateY(-1px)}
+.ranking-stat-label{font-size:10.5px;text-transform:uppercase;letter-spacing:.065em;color:var(--c-text-muted);font-weight:600;margin-bottom:6px;display:flex;align-items:center;gap:5px}
+.ranking-stat-value{font-size:22px;line-height:1;font-weight:700;letter-spacing:-.03em;color:var(--c-text);font-variant-numeric:tabular-nums}
+.ranking-stat-value span{font-size:11.5px;font-weight:500;color:var(--c-text-muted);letter-spacing:0;margin-left:4px}
+
+/* === Infographic Bar Chart (Template Reference) === */
+.infographic-arena{background:var(--c-surface);border:1px solid var(--c-border);border-radius:var(--radius-xl);padding:24px 20px 16px;margin:20px 0 6px;position:relative}
+.infographic-head{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:20px}
+.infographic-eyebrow{font-size:11px;font-weight:650;text-transform:uppercase;letter-spacing:.07em;color:var(--c-accent)}
+.infographic-title{font-size:17px;font-weight:650;letter-spacing:-.02em;color:var(--c-text);margin:3px 0 0}
+.infographic-legend{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.infographic-legend-item{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:500;color:var(--c-text-soft)}
+.infographic-legend-dot{width:8px;height:8px;border-radius:50%}
+
+.infographic-chart-wrap{width:100%;overflow-x:auto;padding:26px 8px 12px;-webkit-overflow-scrolling:touch}
+.infographic-chart{display:flex;align-items:flex-end;justify-content:center;gap:18px;min-width:520px;height:390px;padding-bottom:12px;border-bottom:2px solid rgba(0,0,0,.08);position:relative}
+.infographic-col{display:flex;flex-direction:column;align-items:center;flex:1;max-width:130px;min-width:88px;height:100%;position:relative;transition:transform .22s cubic-bezier(.16,1,.3,1)}
+.infographic-col:hover{transform:translateY(-5px)}
+
+.infographic-bubble-wrap{display:flex;flex-direction:column;align-items:center;margin-bottom:8px;position:relative;z-index:3}
+.infographic-rank-pill{font-size:10px;font-weight:750;letter-spacing:.04em;padding:2px 7px;border-radius:999px;margin-bottom:6px;box-shadow:0 2px 8px rgba(0,0,0,.12);text-transform:uppercase}
+.infographic-halo-ring{position:relative;display:grid;place-items:center;width:66px;height:66px}
+.infographic-halo-glow{position:absolute;inset:-6px;border-radius:50%;background:currentColor;opacity:.2;filter:blur(6px);pointer-events:none;transition:opacity .2s ease,transform .2s ease}
+.infographic-col:hover .infographic-halo-glow{opacity:.38;transform:scale(1.15)}
+.infographic-bubble-circle{position:relative;z-index:2;width:58px;height:58px;border-radius:50%;background:#ffffff;border:3px solid currentColor;display:flex;flex-direction:column;align-items:center;justify-content:center;box-shadow:0 6px 18px rgba(15,23,42,.1);text-align:center;box-sizing:border-box}
+.infographic-bubble-val{font-size:15px;font-weight:750;line-height:1;letter-spacing:-.03em;color:currentColor;font-variant-numeric:tabular-nums}
+.infographic-bubble-sub{font-size:8.5px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--c-text-muted);margin-top:2px}
+
+.infographic-bar-track{width:50px;height:210px;background:rgba(0,0,0,.032);border:1px solid rgba(0,0,0,.045);border-radius:999px;display:flex;flex-direction:column;justify-content:flex-end;padding:3px;box-sizing:border-box;margin:0 auto;position:relative}
+.infographic-bar-fill{width:100%;border-radius:999px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding-bottom:10px;box-shadow:inset 0 1px 0 rgba(255,255,255,.45),0 4px 14px rgba(0,0,0,.08);transition:height .6s cubic-bezier(.16,1,.3,1);min-height:30px}
+.infographic-bar-label{font-size:9px;font-weight:650;color:rgba(255,255,255,.92);text-transform:uppercase;letter-spacing:.04em;white-space:nowrap}
+
+.infographic-col-footer{margin-top:12px;display:flex;flex-direction:column;align-items:center;text-align:center;width:100%}
+.infographic-avatar-wrap{margin-bottom:6px;transition:transform .2s ease}
+.infographic-col:hover .infographic-avatar-wrap{transform:scale(1.08)}
+.infographic-agent-name{font-size:12.5px;font-weight:650;color:var(--c-text);max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:2px}
+.infographic-blog-chip{display:inline-flex;align-items:center;gap:4px;font-size:10px;color:var(--c-text-muted);max-width:105px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:5px}
+.infographic-metrics-pill{display:inline-flex;align-items:center;gap:4px;font-size:9.5px;color:var(--c-text-soft);background:rgba(0,0,0,.025);border:1px solid rgba(0,0,0,.04);padding:2px 6px;border-radius:6px;font-variant-numeric:tabular-nums}
+.infographic-metrics-pill strong{color:var(--c-text);font-weight:650}
+
+/* Infographic Themes (inspired by user reference template) */
+.info-theme-1{color:#6366f1}
+.info-theme-1 .infographic-bar-fill{background:linear-gradient(180deg,#818cf8 0%,#6366f1 52%,#4338ca 100%)}
+.info-theme-1 .infographic-rank-pill{background:#0f172a;color:#fde68a;border:1px solid rgba(245,158,11,.45)}
+
+.info-theme-2{color:#06b6d4}
+.info-theme-2 .infographic-bar-fill{background:linear-gradient(180deg,#22d3ee 0%,#06b6d4 52%,#0891b2 100%)}
+.info-theme-2 .infographic-rank-pill{background:#1e293b;color:#f1f5f9;border:1px solid rgba(148,163,184,.4)}
+
+.info-theme-3{color:#3b82f6}
+.info-theme-3 .infographic-bar-fill{background:linear-gradient(180deg,#60a5fa 0%,#3b82f6 52%,#2563eb 100%)}
+.info-theme-3 .infographic-rank-pill{background:#271a14;color:#fed7aa;border:1px solid rgba(217,119,6,.4)}
+
+.info-theme-4{color:#0284c7}
+.info-theme-4 .infographic-bar-fill{background:linear-gradient(180deg,#38bdf8 0%,#0284c7 52%,#0369a1 100%)}
+.info-theme-4 .infographic-rank-pill{background:#f1f5f9;color:#0369a1;border:1px solid rgba(2,132,199,.3)}
+
+.info-theme-5{color:#64748b}
+.info-theme-5 .infographic-bar-fill{background:linear-gradient(180deg,#94a3b8 0%,#64748b 52%,#475569 100%)}
+.info-theme-5 .infographic-rank-pill{background:#f1f5f9;color:#475569;border:1px solid rgba(100,116,139,.3)}
+
+.ranking-table-card{padding:0;overflow:hidden;border:1px solid var(--c-border);box-shadow:var(--shadow-sm);border-radius:var(--radius-xl);background:var(--c-surface)}
+.ranking-table-head{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:20px 24px 16px;border-bottom:1px solid var(--c-border-light)}
 .ranking-table-head .section-head{margin:0}
-.ranking-table-meta{font-size:11.5px;color:#8a93a5;white-space:nowrap}
-.ranking-table-wrap{padding:8px 14px 16px;overflow-x:auto}
-.ranking-table{border-collapse:separate;border-spacing:0 7px;min-width:1040px}
-.ranking-table th{border:0;padding:7px 12px;font-size:10px;text-transform:uppercase;letter-spacing:.065em;color:#929bad;font-weight:650}
-.ranking-table td{padding:11px 12px;background:#f8fafc;border-top:1px solid #eef1f5;border-bottom:1px solid #eef1f5;color:#5e687a}
-.ranking-table td:first-child{border-left:1px solid #eef1f5;border-radius:12px 0 0 12px}.ranking-table td:last-child{border-right:1px solid #eef1f5;border-radius:0 12px 12px 0}
-.ranking-table tr{transition:transform .16s ease,filter .16s ease}.ranking-table tbody tr:hover{transform:translateY(-2px);filter:drop-shadow(0 8px 10px rgba(30,41,59,.07))}
-.ranking-table tbody tr:first-child td{background:linear-gradient(90deg,#fffaf0,#fffdf8);border-color:#f8e7bc}
-.ranking-position{display:inline-grid;place-items:center;width:29px;height:29px;border-radius:9px;background:#eef2f7;color:#64748b;font-size:11px;font-weight:700}.ranking-position.is-top{background:#172033;color:#fff;box-shadow:0 6px 14px rgba(23,32,51,.16)}
-.ranking-agent-name{display:block;font-weight:650;color:#20293a;max-width:150px;overflow:hidden;text-overflow:ellipsis}.ranking-model{font-size:10px;color:#9aa2b1;max-width:150px;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
-.ranking-number{font-variant-numeric:tabular-nums;font-weight:600;color:#374151}.ranking-number.primary{font-size:13px;color:#111827}
+.ranking-table-wrap{padding:10px 18px 20px;overflow-x:auto}
+.ranking-table{border-collapse:separate;border-spacing:0 6px;min-width:1040px;width:100%}
+.ranking-table th{border:0;padding:8px 12px;font-size:10.5px;text-transform:uppercase;letter-spacing:.065em;color:var(--c-text-muted);font-weight:650}
+.ranking-table td{padding:12px 14px;background:var(--c-bg);border-top:1px solid var(--c-border-light);border-bottom:1px solid var(--c-border-light);color:var(--c-text-soft);font-size:12.5px;transition:background .15s ease,border-color .15s ease}
+.ranking-table td:first-child{border-left:1px solid var(--c-border-light);border-radius:12px 0 0 12px}
+.ranking-table td:last-child{border-right:1px solid var(--c-border-light);border-radius:0 12px 12px 0}
+.ranking-table tbody tr:hover td{background:#ffffff;border-color:rgba(0,122,255,.2);box-shadow:0 4px 12px rgba(15,23,42,.03)}
+.ranking-table tbody tr:first-child td{background:#ffffff;border-top-color:rgba(15,23,42,.12);border-bottom-color:rgba(15,23,42,.12)}
+.ranking-table tbody tr:first-child td:first-child{border-left:2px solid #0f172a}
+.ranking-position{display:inline-grid;place-items:center;width:28px;height:28px;border-radius:8px;background:rgba(0,0,0,.04);color:var(--c-text-soft);font-size:11px;font-weight:700;font-variant-numeric:tabular-nums}
+.ranking-pos-1{background:#0f172a;color:#fde68a;border:1px solid rgba(245,158,11,.35);box-shadow:0 2px 6px rgba(15,23,42,.16)}
+.ranking-pos-2{background:#1e293b;color:#f1f5f9;border:1px solid rgba(148,163,184,.3)}
+.ranking-pos-3{background:#271a14;color:#fed7aa;border:1px solid rgba(217,119,6,.3)}
+.ranking-agent-name{display:block;font-weight:600;color:var(--c-text);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ranking-model{font-size:10px;font-family:var(--font-mono);color:var(--c-text-muted);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:1px}
+.ranking-number{font-variant-numeric:tabular-nums;font-weight:550;color:var(--c-text-soft)}
+.ranking-number.primary{font-size:13px;font-weight:650;color:var(--c-text)}
 /* === Avatar Picker === */
 .avatar-picker{display:flex;flex-wrap:wrap;gap:10px;margin-top:8px}
 .avatar-opt{cursor:pointer;border:2px solid transparent;border-radius:50%;padding:2px;transition:border-color .15s ease,transform .15s ease}
@@ -326,10 +368,10 @@ tbody tr{transition:background .12s ease}tbody tr:hover{background:var(--c-bg)}
 .avatar-opt input[type=radio]{display:none}
 .avatar-opt:has(input:checked){border-color:var(--c-accent);transform:scale(1.1)}
 /* === Highlight Pills === */
-.highlight-pill{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:6px;font-size:11px;font-weight:500}
-.highlight-viral{background:#fdf2f8;border:1px solid #fbcfe8;color:#be185d}
-.highlight-leader{background:#fef3c7;border:1px solid #fde68a;color:#92400e}
-.highlight-roi{background:#ecfdf5;border:1px solid #a7f3d0;color:#047857}
+.highlight-pill{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:6px;font-size:11px;font-weight:600;letter-spacing:.01em}
+.highlight-viral{background:rgba(99,102,241,.08);border:1px solid rgba(99,102,241,.24);color:#4338ca}
+.highlight-leader{background:rgba(245,158,11,.09);border:1px solid rgba(245,158,11,.28);color:#b45309}
+.highlight-roi{background:rgba(16,185,129,.09);border:1px solid rgba(16,185,129,.28);color:#047857}
 /* === Tabs === */
 .tab-pane{display:none}
 .tab-pane.active{display:block}
@@ -413,13 +455,16 @@ tbody tr{transition:background .12s ease}tbody tr:hover{background:var(--c-bg)}
 /* === Responsive === */
 @media(max-width:639px){
   .topbar{flex-wrap:wrap;padding:10px 12px;gap:8px}.brand{order:1}.topbar-right{order:2}.main-nav{order:3;width:100%}
-  .agent{max-width:100%}.podium-grid{grid-template-columns:1fr;gap:12px}
+  .agent{max-width:100%}
+  .infographic-chart{min-width:440px;height:360px;gap:12px}
+  .infographic-bar-track{width:44px;height:180px}
+  .infographic-halo-ring{width:58px;height:58px}
+  .infographic-bubble-circle{width:50px;height:50px}
+  .infographic-bubble-val{font-size:13px}
 }
 @media(min-width:640px){
   .shell{padding:22px 20px 56px}.topbar{padding:12px 22px;margin:-22px -20px 22px}
   .brand-subtitle{display:block}.card{padding:22px}.modal{padding:24px}
-  .podium-grid{grid-template-columns:repeat(3,1fr);gap:18px}
-  .podium-card{padding:28px 22px 24px}.podium-name{font-size:15px}.podium-score{font-size:24px}
   .post-create-layout{grid-template-columns:minmax(0,1fr) 340px}
 }
 @media(min-width:768px){
@@ -511,6 +556,13 @@ function fmtDate(iso: string | null | undefined): string {
 function fmtCost(cost: number): string {
   if (cost === undefined || cost === null || cost <= 0) return "$0.0000";
   return `$${cost.toFixed(4)}`;
+}
+
+export function formatShortNumber(num: number): string {
+  if (!num || num <= 0) return "0";
+  if (num >= 1_000_000) return (num / 1_000_000).toFixed(1).replace(/\.0$/, "") + "M";
+  if (num >= 1_000) return (num / 1_000).toFixed(1).replace(/\.0$/, "") + "k";
+  return num.toLocaleString("pt-BR");
 }
 
 const MODEL_SUGGESTIONS = [
@@ -2221,77 +2273,83 @@ export interface RankingPageData {
 }
 
 export function renderRankingTab(items: AgentRankingItem[], blogs: Blog[], selectedBlogId: number | null): string {
-  const first = items[0];
-  const second = items[1];
-  const third = items[2];
+  const totalAgents = items.length;
+  const totalViews = items.reduce((acc, it) => acc + (it.totalViews || 0), 0);
+  const totalPosts = items.reduce((acc, it) => acc + (it.totalPosts || 0), 0);
+  const totalCost = items.reduce((acc, it) => acc + (it.totalCostUsd || 0), 0);
 
-  const podiumHtml = items.length > 0
-    ? `<div class="podium-grid">
-        ${
-          second
-            ? (() => {
-              const b2 = blogs.find((b) => b.id === second.agent.blogId);
-              return `<div class="podium-card podium-2nd">
-                <span class="podium-rank-badge rank-silver">
-                  <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-                  2º Lugar
-                </span>
-                ${renderAvatar(second.agent.avatar, 68, "silver")}
-                <div class="podium-name">${escapeHtml(second.agent.name)}</div>
-                <div class="podium-blog">
-                  ${b2 ? renderBlogFavicon(b2.baseUrl, second.blogName, 22) : ""}
-                  <span class="cat-chip">${escapeHtml(second.blogName)}</span>
+  const topAgents = items.slice(0, 5);
+  const maxViews = Math.max(1, ...topAgents.map((i) => i.totalViews));
+
+  const infographicHtml = items.length > 0
+    ? `
+    <div class="infographic-arena">
+      <div class="infographic-head">
+        <div>
+          <span class="infographic-eyebrow">Visual Benchmark</span>
+          <h3 class="infographic-title">Comparativo de Audiência por Agente</h3>
+        </div>
+        <div class="infographic-legend">
+          <span class="infographic-legend-item"><span class="infographic-legend-dot" style="background:#6366f1"></span> 1º Líder</span>
+          <span class="infographic-legend-item"><span class="infographic-legend-dot" style="background:#06b6d4"></span> 2º Destaque</span>
+          <span class="infographic-legend-item"><span class="infographic-legend-dot" style="background:#3b82f6"></span> 3º Tração</span>
+          ${topAgents.length >= 4 ? '<span class="infographic-legend-item"><span class="infographic-legend-dot" style="background:#0284c7"></span> 4º Ativo</span>' : ""}
+          ${topAgents.length >= 5 ? '<span class="infographic-legend-item"><span class="infographic-legend-dot" style="background:#64748b"></span> 5º Ativo</span>' : ""}
+        </div>
+      </div>
+
+      <div class="infographic-chart-wrap">
+        <div class="infographic-chart">
+          ${topAgents.map((it, idx) => {
+            const themeIdx = (idx % 5) + 1;
+            const blog = blogs.find((b) => b.id === it.agent.blogId);
+            const fillPct = maxViews > 0 && it.totalViews > 0
+              ? Math.max(28, Math.min(100, Math.round((it.totalViews / maxViews) * 100)))
+              : 28;
+            const rankLabel = it.rank === 1 ? "1º Líder" : `${it.rank}º Lugar`;
+
+            return `
+              <div class="infographic-col info-theme-${themeIdx}">
+                <div class="infographic-bubble-wrap">
+                  <span class="infographic-rank-pill">${rankLabel}</span>
+                  <div class="infographic-halo-ring">
+                    <div class="infographic-halo-glow"></div>
+                    <div class="infographic-bubble-circle">
+                      <span class="infographic-bubble-val">${formatShortNumber(it.totalViews)}</span>
+                      <span class="infographic-bubble-sub">views</span>
+                    </div>
+                  </div>
                 </div>
-                <div class="podium-score">${second.totalViews.toLocaleString("pt-BR")} <span style="font-size:13px;font-weight:500;color:#64748b">views</span></div>
-                <div class="podium-sub">${second.views7d.toLocaleString("pt-BR")} views (7d) • ${second.totalPosts} posts</div>
-              </div>`;
-            })()
-            : "<div></div>"
-        }
-        ${
-          first
-            ? (() => {
-              const b1 = blogs.find((b) => b.id === first.agent.blogId);
-              return `<div class="podium-card podium-1st">
-                <span class="podium-rank-badge rank-gold">
-                  <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="m2 4 3 12h14l3-12-6 7-4-7-4 7-6-7zm3 16h14"/></svg>
-                  1º Campeão
-                </span>
-                ${renderAvatar(first.agent.avatar, 84, "gold")}
-                <div class="podium-name" style="font-size:18px">${escapeHtml(first.agent.name)}</div>
-                <div class="podium-blog">
-                  ${b1 ? renderBlogFavicon(b1.baseUrl, first.blogName, 24) : ""}
-                  <span class="cat-chip">${escapeHtml(first.blogName)}</span>
+
+                <div class="infographic-bar-track">
+                  <div class="infographic-bar-fill" style="height:${fillPct}%">
+                    <span class="infographic-bar-label">${it.totalPosts} posts</span>
+                  </div>
                 </div>
-                <div class="podium-score">${first.totalViews.toLocaleString("pt-BR")} <span>views</span></div>
-                <div class="podium-sub">${first.views7d.toLocaleString("pt-BR")} views na semana • Score: ${first.roiScore.toLocaleString("pt-BR")} views/$</div>
-              </div>`;
-            })()
-            : '<div class="empty" style="grid-column:1/-1">Nenhum agente para ranquear ainda.</div>'
-        }
-        ${
-          third
-            ? (() => {
-              const b3 = blogs.find((b) => b.id === third.agent.blogId);
-              return `<div class="podium-card podium-3rd">
-                <span class="podium-rank-badge rank-bronze">
-                  <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-                  3º Lugar
-                </span>
-                ${renderAvatar(third.agent.avatar, 68, "bronze")}
-                <div class="podium-name">${escapeHtml(third.agent.name)}</div>
-                <div class="podium-blog">
-                  ${b3 ? renderBlogFavicon(b3.baseUrl, third.blogName, 22) : ""}
-                  <span class="cat-chip">${escapeHtml(third.blogName)}</span>
+
+                <div class="infographic-col-footer">
+                  <div class="infographic-avatar-wrap">
+                    ${renderAvatar(it.agent.avatar, 38)}
+                  </div>
+                  <span class="infographic-agent-name" title="${escapeHtml(it.agent.name)}">${escapeHtml(it.agent.name)}</span>
+                  <div class="infographic-blog-chip">
+                    ${blog ? renderBlogFavicon(blog.baseUrl, it.blogName, 14) : ""}
+                    <span>${escapeHtml(it.blogName)}</span>
+                  </div>
+                  <div class="infographic-metrics-pill">
+                    <span><strong>${it.views7d.toLocaleString("pt-BR")}</strong> 7d</span>
+                    <span style="opacity:.3">•</span>
+                    <span><strong>${it.roiScore > 0 ? it.roiScore.toLocaleString("pt-BR") : "—"}</strong> ROI</span>
+                  </div>
                 </div>
-                <div class="podium-score">${third.totalViews.toLocaleString("pt-BR")} <span style="font-size:13px;font-weight:500;color:#64748b">views</span></div>
-                <div class="podium-sub">${third.views7d.toLocaleString("pt-BR")} views (7d) • ${third.totalPosts} posts</div>
-              </div>`;
-            })()
-            : "<div></div>"
-        }
-      </div>`
-    : "";
+              </div>
+            `;
+          }).join("")}
+        </div>
+      </div>
+    </div>
+    `
+    : '<div class="empty" style="margin:20px 0">Nenhum agente com métricas registradas ainda.</div>';
 
   const blogTabs = `
     <div class="blog-tabs">
@@ -2304,20 +2362,56 @@ export function renderRankingTab(items: AgentRankingItem[], blogs: Blog[], selec
   <section class="card ranking-hero" style="margin-bottom:20px">
     <div class="section-head ranking-hero-head">
       <div>
-        <p class="eyebrow">Gamificação & Audiência</p>
-        <h2 class="ranking-title">Arena dos Agentes <span style="color:#8b93a5;font-weight:450">— Leaderboard</span></h2>
-        <p class="muted ranking-description">Os agentes competem em visualizações reais e analisam os artigos mais lidos para superarem seus próprios recordes.</p>
+        <p class="eyebrow">Performance & Audiência</p>
+        <h2 class="ranking-title">Arena dos Agentes <span style="color:var(--c-text-muted);font-weight:450">— Leaderboard</span></h2>
+        <p class="muted ranking-description">Métricas consolidadas de alcance orgânico, visualizações reais e eficiência operacional de cada agente na rede.</p>
+      </div>
+      <div class="ranking-live">
+        Atualização Contínua
       </div>
     </div>
+
     ${blogTabs}
-    ${podiumHtml}
+
+    <div class="ranking-summary">
+      <div class="ranking-stat">
+        <div class="ranking-stat-label">
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          Agentes Ativos
+        </div>
+        <div class="ranking-stat-value">${totalAgents} <span>no ranking</span></div>
+      </div>
+      <div class="ranking-stat">
+        <div class="ranking-stat-label">
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m12 6 4 6h-8z"/></svg>
+          Audiência Consolidada
+        </div>
+        <div class="ranking-stat-value">${totalViews.toLocaleString("pt-BR")} <span>views</span></div>
+      </div>
+      <div class="ranking-stat">
+        <div class="ranking-stat-label">
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          Artigos Publicados
+        </div>
+        <div class="ranking-stat-value">${totalPosts} <span>posts</span></div>
+      </div>
+      <div class="ranking-stat">
+        <div class="ranking-stat-label">
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+          Custo Operacional
+        </div>
+        <div class="ranking-stat-value">$${totalCost.toFixed(4)} <span>USD</span></div>
+      </div>
+    </div>
+
+    ${infographicHtml}
   </section>
 
   <section class="card ranking-table-card">
     <div class="section-head ranking-table-head">
       <div>
         <p class="eyebrow">Tabela Completa</p>
-        <h2>Classificação Geral</h2>
+        <h2>Classificação Geral de Agentes</h2>
       </div>
     </div>
     ${
@@ -2327,7 +2421,7 @@ export function renderRankingTab(items: AgentRankingItem[], blogs: Blog[], selec
       <table class="table-stack ranking-table">
         <thead>
           <tr>
-            <th style="width:50px">Pos</th>
+            <th style="width:55px">Pos</th>
             <th>Agente</th>
             <th>Blog de Destino</th>
             <th>Papel</th>
@@ -2342,14 +2436,14 @@ export function renderRankingTab(items: AgentRankingItem[], blogs: Blog[], selec
         </thead>
         <tbody>
           ${items.map((it) => {
-            const rankRank = it.rank === 1 ? "gold" : it.rank === 2 ? "silver" : it.rank === 3 ? "bronze" : "none";
             const itBlog = blogs.find((b) => b.id === it.agent.blogId);
+            const posClass = it.rank === 1 ? "ranking-pos-1" : it.rank === 2 ? "ranking-pos-2" : it.rank === 3 ? "ranking-pos-3" : "";
             return `
               <tr>
-                <td data-label="Pos"><span class="ranking-position ${it.rank <= 3 ? "is-top" : ""}">#${it.rank}</span></td>
+                <td data-label="Pos"><span class="ranking-position ${posClass}">#${it.rank}</span></td>
                 <td data-label="Agente">
                   <div class="table-avatar-cell">
-                    ${renderAvatar(it.agent.avatar, 42, rankRank)}
+                    ${renderAvatar(it.agent.avatar, 38)}
                     <div>
                       <span class="ranking-agent-name">${escapeHtml(it.agent.name)}</span>
                       <div class="ranking-model">${escapeHtml(it.agent.model)}</div>
@@ -2358,7 +2452,7 @@ export function renderRankingTab(items: AgentRankingItem[], blogs: Blog[], selec
                 </td>
                 <td data-label="Blog">
                   <div style="display:flex;align-items:center;gap:8px">
-                    ${itBlog ? renderBlogFavicon(itBlog.baseUrl, it.blogName, 26) : ""}
+                    ${itBlog ? renderBlogFavicon(itBlog.baseUrl, it.blogName, 22) : ""}
                     <span>${escapeHtml(it.blogName)}</span>
                   </div>
                 </td>
