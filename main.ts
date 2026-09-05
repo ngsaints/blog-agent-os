@@ -5,9 +5,17 @@ import { LocalSqliteStore } from "./src/local_store.ts";
 import { SettingsService } from "./src/settings.ts";
 import { OpenRouterClient } from "./src/openrouter.ts";
 import { createHandler, makeRunner } from "./src/server.ts";
-import { startScheduler } from "./src/scheduler.ts";
+import { runDueAgents, startScheduler } from "./src/scheduler.ts";
 import { serveNode } from "./src/node_server.ts";
 import { ChatService } from "./src/chat.ts";
+
+declare const Deno: {
+  cron?: (name: string, schedule: string, cb: () => Promise<void> | void) => void;
+  serve?: {
+    (handler: (req: Request) => Promise<Response> | Response): void;
+    (options: { port?: number; onListen?: () => void }, handler: (req: Request) => Promise<Response> | Response): void;
+  };
+} | undefined;
 
 const config = loadConfig();
 
@@ -82,6 +90,14 @@ const runner = makeRunner(openrouter, pexels, store, settings);
 const chat = new ChatService(store, openrouter, settings, runner);
 
 startScheduler(config.runIntervalMinutes, store, runner, config.isServerless);
+
+// Registra cron nativo no Deno Deploy (visível na aba Crons do painel do Deno Deploy)
+if (typeof Deno !== "undefined" && typeof Deno.cron === "function") {
+  Deno.cron("Blog Agent OS Auto-Runner", "*/15 * * * *", async () => {
+    console.log("[Deno.cron] Disparo de verificação periódica de agentes...");
+    await runDueAgents(store, runner, true);
+  });
+}
 
 const handler = createHandler({ config, store, settings, openrouter, pexels, runner, chat });
 
