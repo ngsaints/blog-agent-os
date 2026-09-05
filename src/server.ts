@@ -480,10 +480,26 @@ export function createHandler(ctx: ServerContext): Handler {
       const prompt = String(body?.prompt ?? "").trim();
       const model = String(body?.model ?? (ctx.settings.get().chatModel || "deepseek/deepseek-chat")).trim();
       const useWebSearch = Boolean(body?.web_search ?? true);
+      const categoryId = Number(body?.category_id ?? 0);
       if (!prompt) return json({ error: "Prompt obrigatorio." }, 400);
       try {
-        const system = `Voce e um redator profissional de blog brasileiro. Escreva artigos em portugues do Brasil, com otima qualidade editorial, SEO otimizado e HTML semantico pronto para publicacao.
+        let newsGrounding = "";
+        try {
+          const sources = await ctx.store.listRssSources(categoryId > 0 ? categoryId : undefined);
+          const active = sources.filter((s) => s.isActive);
+          if (active.length > 0) {
+            const articles = await fetchMultiFeedRadar(active, 4);
+            if (articles.length > 0) {
+              newsGrounding = "\n\nNOTÍCIAS E FATOS REAIS DE HOJE (ÚLTIMAS HORAS):\n" +
+                articles.map((a, i) => `${i + 1}. "${a.title}" — Fonte: ${a.source} (${a.pubDate || "Hoje"})`).join("\n") +
+                "\nBaseie-se rigorosamente nesses fatos e novidades reais como referência factual e gancho editorial.";
+            }
+          }
+        } catch { /* fallback */ }
+
+        const system = `Voce e um redator profissional de blog brasileiro senior. Escreva artigos em portugues do Brasil, com otima qualidade editorial, SEO otimizado e HTML semantico pronto para publicacao.
 ${useWebSearch ? "\nIMPORTANTE: A pesquisa web em tempo real esta ativada. Incorpore fatos recentes, estatisticas, referencias e informacoes atualizadas com autoridade editorial." : ""}
+${newsGrounding}
 
 **FORMATO DE RESPOSTA:** Retorne APENAS um JSON valido com:
 {

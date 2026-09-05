@@ -1452,7 +1452,7 @@ function modelCombobox(
   <input class="cb-input" id="model-cb-${prefix}" type="text" placeholder="Pesquisar modelo…" autocomplete="off" value="${
     escapeHtml(display)
   }">
-  <input class="cb-hidden" type="hidden" name="${escapeHtml(fieldName)}" value="${
+  <input class="cb-hidden" id="${prefix}" type="hidden" name="${escapeHtml(fieldName)}" value="${
     escapeHtml(value)
   }"${fieldName === "model" ? " required" : ""}>
   <div class="cb-list" hidden></div>
@@ -1469,7 +1469,7 @@ function modelComboboxJs(models: ModelInfo[]): string {
     var items=imageOnly?MODELS.filter(function(m){return m.image}):MODELS;
     function render(q){
       q=(q||"").trim().toLowerCase();
-      var shown=items.filter(function(m){return q===""||m.id.toLowerCase().indexOf(q)>-1||(m.name||"").toLowerCase().indexOf(q)>-1}).slice(0,80);
+      var shown=items.filter(function(m){return q===""||m.id.toLowerCase().indexOf(q)>-1||(m.name||"").toLowerCase().indexOf(q)>-1}).slice(0,100);
       if(shown.length===0){listEl.innerHTML='<div class="cb-empty">Nenhum modelo encontrado</div>';return}
       listEl.innerHTML=shown.map(function(m){
         var badges = '';
@@ -1487,7 +1487,15 @@ function modelComboboxJs(models: ModelInfo[]): string {
       var match=items.filter(function(m){return (m.id&&m.id.toLowerCase()===val.toLowerCase())||(m.name&&m.name.toLowerCase()===val.toLowerCase())})[0];
       hidden.value=match?match.id:val;
     }
-    function pick(m){hidden.value=m.id;input.value=m.name||m.id;listEl.hidden=true}
+    function pick(m){
+      hidden.value=m.id;
+      input.value=m.name||m.id;
+      listEl.hidden=true;
+      try {
+        hidden.dispatchEvent(new Event("input", { bubbles: true }));
+        hidden.dispatchEvent(new Event("change", { bubbles: true }));
+      } catch(e) {}
+    }
     function close(){listEl.hidden=true}
     input.addEventListener("input",function(){syncValue();render(input.value);listEl.hidden=false});
     input.addEventListener("change",syncValue);
@@ -2931,22 +2939,38 @@ export function renderCreatePostTab(data: DashboardData): string {
         <!-- Tab 1: Full Article Generator -->
         <div id="side-panel-gen" class="side-panel">
           <div class="form-stack">
+            <!-- Radar RSS Integration Bar -->
+            <div style="background:var(--c-bg);border:1px solid var(--c-border);border-radius:var(--radius);padding:12px 14px;margin-bottom:4px">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+                <span style="font-size:12px;font-weight:600;color:var(--c-text);display:inline-flex;align-items:center;gap:6px">
+                  <span class="pulse-dot" style="background:#10b981;width:7px;height:7px"></span>
+                  Radar de Pautas em Alta (RSS)
+                </span>
+                <button type="button" class="button button-xs button-secondary" onclick="loadCreatePostRadarPautas()" title="Recarregar pautas quentes" style="display:inline-flex;align-items:center;gap:4px">
+                  <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                  Atualizar
+                </button>
+              </div>
+              <div id="cp-radar-chips" style="display:flex;flex-direction:column;gap:6px">
+                <span style="font-size:11.5px;color:var(--c-text-muted)">Carregando pautas do radar...</span>
+              </div>
+            </div>
+
             <div>
-              <label for="gen-prompt" style="font-size:12px">Tópico ou Pauta do Artigo</label>
+              <label for="gen-prompt" style="font-size:12px;font-weight:500">Tópico ou Pauta do Artigo</label>
               <textarea id="gen-prompt" rows="3" placeholder="Ex.: Escreva um guia prático sobre como automatizar tarefas diárias usando agentes de inteligência artificial..." style="font-size:13px"></textarea>
             </div>
             
             <div class="prompt-chips">
+              <span class="prompt-chip" data-prompt="Notícia de Última Hora: Fatos Reais e Análise de Impacto">Notícia Urgente</span>
               <span class="prompt-chip" data-prompt="Guia Completo de Tendências para 2026 no Brasil">Tendências 2026</span>
               <span class="prompt-chip" data-prompt="Passo a Passo Prático para Iniciantes: Guia Definitivo">Guia Passo a Passo</span>
               <span class="prompt-chip" data-prompt="Top 7 Ferramentas Gratuitas e Melhores Práticas">Top 7 Ferramentas</span>
             </div>
 
             <div>
-              <label for="gen-model" style="font-size:12px">Modelo de Linguagem</label>
-              <select id="gen-model" style="height:36px;font-size:12.5px">
-                ${models.filter((m) => !m.image).length > 0 ? models.filter((m) => !m.image).slice(0, 25).map((m) => `<option value="${escapeHtml(m.id)}" ${m.id === defaultModel ? "selected" : ""}>${escapeHtml(m.name || m.id)}</option>`).join("") : `<option value="${escapeHtml(defaultModel)}">${escapeHtml(defaultModel)}</option>`}
-              </select>
+              <label for="model-cb-gen-model" style="font-size:12px;font-weight:500;margin-bottom:4px;display:block">Modelo de Linguagem (Digite para pesquisar)</label>
+              ${modelCombobox("gen-model", "model", defaultModel, models, false)}
             </div>
 
             <div style="background:var(--c-bg);padding:10px 12px;border-radius:var(--radius);border:1px solid var(--c-border)">
@@ -3014,10 +3038,8 @@ export function renderCreatePostTab(data: DashboardData): string {
             </div>
             <button type="button" class="button button-xs button-secondary" id="btn-suggest-img-prompt" style="align-self:flex-start">Sugerir do Título</button>
             <div>
-              <label for="img-model" style="font-size:12px">Modelo de Imagem</label>
-              <select id="img-model" style="height:36px;font-size:12.5px">
-                ${imageModels.length > 0 ? imageModels.map((m) => `<option value="${escapeHtml(m.id)}" ${m.id === imageModel ? "selected" : ""}>${escapeHtml(m.name || m.id)}</option>`).join("") : `<option value="google/gemini-2.5-flash-image">google/gemini-2.5-flash-image</option>`}
-              </select>
+              <label for="model-cb-img-model" style="font-size:12px;font-weight:500;margin-bottom:4px;display:block">Modelo de Imagem (Digite para pesquisar)</label>
+              ${modelCombobox("img-model", "image_model", imageModel, models, true)}
             </div>
             <button type="button" class="button" id="btn-generate-image" style="width:100%;height:40px">Gerar Imagem com IA</button>
           </div>
@@ -3060,6 +3082,86 @@ export function renderCreatePostTab(data: DashboardData): string {
   }
   if (bs) bs.addEventListener("change", syncCategories);
   syncCategories();
+
+  // --- Radar RSS Pautas Integration ---
+  var cpRadarArticles = [];
+  function formatDateFriendly(d) {
+    try {
+      var date = new Date(d);
+      if (isNaN(date.getTime())) return d;
+      var now = new Date();
+      var diffMs = now.getTime() - date.getTime();
+      var diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+      if (diffHours < 1) {
+        var diffMin = Math.max(1, Math.floor(diffMs / (1000 * 60)));
+        return "Há " + diffMin + " min";
+      }
+      if (diffHours < 24) return "Há " + diffHours + " h";
+      var diffDays = Math.floor(diffHours / 24);
+      if (diffDays === 1) return "Ontem";
+      if (diffDays < 7) return "Há " + diffDays + " dias";
+      return date.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" });
+    } catch(e) {
+      return d;
+    }
+  }
+
+  window.loadCreatePostRadarPautas = function() {
+    var container = document.getElementById("cp-radar-chips");
+    if (!container) return;
+    container.innerHTML = '<span style="font-size:11.5px;color:var(--c-text-muted)">Buscando pautas do radar RSS...</span>';
+    var catVal = cs ? cs.value : "";
+    var url = new URL("/admin/api/rss-radar", window.location.origin);
+    if (catVal) url.searchParams.set("categoryId", catVal);
+    fetch(url.toString())
+      .then(function(res){ return res.json(); })
+      .then(function(data){
+        if (!data || !Array.isArray(data.articles) || data.articles.length === 0) {
+          container.innerHTML = '<span style="font-size:11.5px;color:var(--c-text-muted)">Nenhuma pauta encontrada no momento. <a href="javascript:void(0)" onclick="switchTab(\\'rss\\')" style="color:var(--c-accent)">Adicionar feeds RSS</a></span>';
+          return;
+        }
+        cpRadarArticles = data.articles.slice(0, 3);
+        container.innerHTML = cpRadarArticles.map(function(art, i){
+          var safeTitle = (art.title || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+          var safeSource = (art.source || "RSS").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+          var dateStr = art.pubDate ? formatDateFriendly(art.pubDate) : "Hoje";
+          return '<div onclick="useCreatePostRadarPauta(' + i + ')" title="Clique para transferir esta pauta para o artigo" style="cursor:pointer;padding:7px 9px;background:var(--c-surface);border:1px solid var(--c-border-light);border-radius:8px;transition:all .15s ease" onmouseover="this.style.borderColor=\\'var(--c-accent)\\'" onmouseout="this.style.borderColor=\\'var(--c-border-light)\\'">' +
+            '<div style="display:flex;align-items:center;gap:6px;margin-bottom:2px">' +
+              '<span class="status-pill status-pill-active" style="font-size:9.5px;padding:1px 5px">' + safeSource + '</span>' +
+              '<span style="font-size:10.5px;color:var(--c-text-muted)">' + dateStr + '</span>' +
+            '</div>' +
+            '<div style="font-size:12px;font-weight:600;line-height:1.3;color:var(--c-text);overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">' + safeTitle + '</div>' +
+          '</div>';
+        }).join("");
+      })
+      .catch(function(){
+        container.innerHTML = '<span style="font-size:11.5px;color:var(--c-text-muted)">Radar indisponível no momento.</span>';
+      });
+  };
+
+  window.useCreatePostRadarPauta = function(idx) {
+    var art = cpRadarArticles[idx];
+    if (!art) return;
+    var genPrompt = document.getElementById("gen-prompt");
+    if (genPrompt) {
+      genPrompt.value = "Escreva um artigo jornalístico completo, analítico e de alto impacto sobre a notícia de última hora: \"" + art.title + "\". Fonte: " + art.source + (art.snippet ? " (" + art.snippet + ")" : "") + ". Baseie-se nos fatos reais e desenvolva insights práticos para o público.";
+    }
+    if (titleInput) {
+      titleInput.value = art.title;
+      titleInput.dispatchEvent(new Event("input"));
+    }
+    if (slugInput) {
+      slugInput.value = slugify(art.title);
+    }
+    updateMetrics();
+  };
+
+  if (cs) {
+    cs.addEventListener("change", function(){
+      loadCreatePostRadarPautas();
+    });
+  }
+  setTimeout(loadCreatePostRadarPautas, 300);
 
   // --- Stats Counter ---
   var titleInput = document.getElementById("post-title");
@@ -3391,7 +3493,8 @@ export function renderCreatePostTab(data: DashboardData): string {
       bF.style.display = "none";
       lastGen = null;
 
-      api("/admin/create-post/generate-content", { prompt: p, model: m, web_search: ws }).then(function(r){
+      var catId = cs ? parseInt(cs.value) || 0 : 0;
+      api("/admin/create-post/generate-content", { prompt: p, model: m, web_search: ws, category_id: catId }).then(function(r){
         gS.innerHTML = "";
         if (r.error) {
           gS.innerHTML = '<span style="color:var(--c-danger);font-size:12px">' + r.error + '</span>';
