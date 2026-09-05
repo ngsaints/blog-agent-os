@@ -2976,7 +2976,7 @@ export function renderCreatePostTab(data: DashboardData): string {
                 <input id="post-cover" name="cover_image" placeholder="https://... ou faça upload ao lado" style="background:var(--c-surface)">
                 <div id="cover-upload-status" style="margin-top:6px"></div>
                 <div id="cover-preview-wrap" style="display:none;margin-top:10px;position:relative;border-radius:var(--radius-sm);overflow:hidden;border:1px solid var(--c-border);background:#000">
-                  <img id="cover-preview-img" src="" alt="Prévia da Capa" style="width:100%;max-height:160px;object-fit:cover;display:block">
+                  <img id="cover-preview-img" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E" alt="Prévia da Capa" style="width:100%;max-height:160px;object-fit:cover;display:block">
                   <div style="position:absolute;bottom:0;left:0;right:0;padding:4px 8px;background:rgba(0,0,0,.6);color:#fff;font-size:11px;display:flex;justify-content:space-between;align-items:center">
                     <span>Capa Definida</span>
                     <button type="button" id="btn-remove-cover" style="color:#f87171;background:none;border:none;cursor:pointer;font-size:11px;font-weight:500">Remover</button>
@@ -3184,7 +3184,7 @@ export function renderCreatePostTab(data: DashboardData): string {
           </div>
           <div id="img-status" style="margin-top:8px"></div>
           <div id="img-result" style="display:none;margin-top:10px">
-            <img id="img-preview" src="" alt="" style="width:100%;border-radius:var(--radius-sm);border:1px solid var(--c-border);display:block">
+            <img id="img-preview" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E" alt="" style="width:100%;border-radius:var(--radius-sm);border:1px solid var(--c-border);display:block">
             <button type="button" class="button button-sm button-secondary" id="btn-use-image" style="margin-top:10px;width:100%">Usar esta Imagem como Capa</button>
           </div>
         </div>
