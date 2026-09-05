@@ -3128,7 +3128,7 @@ export function renderCreatePostTab(data: DashboardData): string {
           </div>
           <div id="gen-status" style="margin-top:8px"></div>
           <div id="gen-result" class="gen-result" style="display:none;margin-top:10px"></div>
-          <button type="button" class="button button-sm button-secondary" id="btn-fill-form" style="display:none;margin-top:10px;width:100%">
+          <button type="button" class="button button-sm button-secondary" id="btn-fill-form" onclick="fillFormWithLastGen()" style="display:none;margin-top:10px;width:100%">
             Preencher Formulário com este Artigo
           </button>
         </div>
@@ -3769,6 +3769,9 @@ export function renderCreatePostTab(data: DashboardData): string {
         var formattedHtml = formatSemanticHtmlClient(r.content_html || r.content || "");
         r.content_html = formattedHtml;
         r.content = formattedHtml;
+        lastGen = r;
+        window.lastGeneratedArticle = r;
+
         var previewHtml = formattedHtml;
         if (!previewHtml && r.excerpt) previewHtml = "<p>" + escHtml(r.excerpt) + "</p>";
         gR.innerHTML = (r.title ? '<h4 style="margin:0 0 6px;font-size:13.5px">' + escHtml(r.title) + '</h4>' : '') +
@@ -3782,20 +3785,41 @@ export function renderCreatePostTab(data: DashboardData): string {
     });
   }
 
+  window.fillFormWithLastGen = function(){
+    var g = lastGen || window.lastGeneratedArticle;
+    if (!g) return;
+    if (g.title && titleInput) {
+      titleInput.value = g.title;
+      titleInput.dispatchEvent(new Event("input"));
+    }
+    if (g.excerpt && excerptInput) {
+      excerptInput.value = g.excerpt;
+      excerptInput.dispatchEvent(new Event("input"));
+    }
+    var cleanHtml = formatSemanticHtmlClient(g.content_html || g.content || "");
+    if (!cleanHtml && g.excerpt) cleanHtml = "<p>" + g.excerpt + "</p>";
+    if (cleanHtml && contentInput) {
+      contentInput.value = cleanHtml;
+      contentInput.dispatchEvent(new Event("input"));
+    }
+    if (g.slug && slugInput) {
+      slugInput.value = g.slug;
+    }
+    var tagsEl = document.getElementById("post-tags");
+    if (g.tags && tagsEl) {
+      tagsEl.value = g.tags;
+    }
+    var fillBtn = document.getElementById("btn-fill-form");
+    if (fillBtn) fillBtn.style.display = "none";
+    updateMetrics();
+    var stat = document.getElementById("gen-status");
+    if (stat) {
+      stat.innerHTML = '<span style="color:var(--c-success);font-size:12px;font-weight:600">Artigo e metadados preenchidos no formulário com sucesso.</span>';
+    }
+  };
+
   if (bF) {
-    bF.addEventListener("click", function(){
-      if (!lastGen) return;
-      if (lastGen.title && titleInput) titleInput.value = lastGen.title;
-      if (lastGen.excerpt && excerptInput) excerptInput.value = lastGen.excerpt;
-      var cleanHtml = formatSemanticHtmlClient(lastGen.content_html || lastGen.content || "");
-      if (!cleanHtml && lastGen.excerpt) cleanHtml = "<p>" + lastGen.excerpt + "</p>";
-      if (cleanHtml && contentInput) contentInput.value = cleanHtml;
-      if (lastGen.slug && slugInput) slugInput.value = lastGen.slug;
-      if (lastGen.tags && document.getElementById("post-tags")) document.getElementById("post-tags").value = lastGen.tags;
-      bF.style.display = "none";
-      updateMetrics();
-      if (gS) gS.innerHTML = '<span style="color:var(--c-success);font-size:12px">Formulário preenchido com sucesso em HTML semântico.</span>';
-    });
+    bF.addEventListener("click", window.fillFormWithLastGen);
   }
 
   // --- Pexels Search ---
