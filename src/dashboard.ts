@@ -3617,8 +3617,28 @@ export function renderCreatePostTab(data: DashboardData): string {
     if (t.indexOf("{") === 0 && t.lastIndexOf("}") === t.length - 1) {
       try {
         var parsed = JSON.parse(t);
-        if (parsed.content_html) t = parsed.content_html;
-        else if (parsed.content) t = parsed.content;
+        if (parsed.content_html && parsed.content_html !== t) {
+          t = parsed.content_html;
+        } else if (parsed.content && parsed.content !== t) {
+          t = parsed.content;
+        } else if (parsed.excerpt) {
+          t = parsed.excerpt;
+        } else {
+          t = "";
+        }
+      } catch(e){
+        t = "";
+      }
+    }
+    if ((t.indexOf('{"title"') !== -1 || t.indexOf('"title":') !== -1) && t.indexOf("<h2") === -1 && t.indexOf("<p") === -1) {
+      try {
+        var m = t.match(/\{[\s\S]*\}/);
+        if (m) {
+          var p2 = JSON.parse(m[0]);
+          if (p2.content_html) t = p2.content_html;
+          else if (p2.excerpt) t = p2.excerpt;
+          else t = "";
+        }
       } catch(e){}
     }
     if (t.indexOf("\\n") !== -1 && t.indexOf("\n") === -1) {
@@ -3697,10 +3717,11 @@ export function renderCreatePostTab(data: DashboardData): string {
         var formattedHtml = formatSemanticHtmlClient(r.content_html || r.content || "");
         r.content_html = formattedHtml;
         r.content = formattedHtml;
-        lastGen = r;
+        var previewHtml = formattedHtml;
+        if (!previewHtml && r.excerpt) previewHtml = "<p>" + escHtml(r.excerpt) + "</p>";
         gR.innerHTML = (r.title ? '<h4 style="margin:0 0 6px;font-size:13.5px">' + escHtml(r.title) + '</h4>' : '') +
           (r.excerpt ? '<p style="color:var(--c-text-soft);margin:0 0 8px;font-size:12px">' + escHtml(r.excerpt) + '</p>' : '') +
-          '<div style="max-height:180px;overflow-y:auto;font-size:12px;color:var(--c-text-soft);line-height:1.5">' + formattedHtml + '</div>';
+          '<div style="max-height:180px;overflow-y:auto;font-size:12px;color:var(--c-text-soft);line-height:1.5">' + previewHtml + '</div>';
         gR.style.display = "block";
         bF.style.display = "block";
       }).catch(function(e){
@@ -3715,6 +3736,7 @@ export function renderCreatePostTab(data: DashboardData): string {
       if (lastGen.title && titleInput) titleInput.value = lastGen.title;
       if (lastGen.excerpt && excerptInput) excerptInput.value = lastGen.excerpt;
       var cleanHtml = formatSemanticHtmlClient(lastGen.content_html || lastGen.content || "");
+      if (!cleanHtml && lastGen.excerpt) cleanHtml = "<p>" + lastGen.excerpt + "</p>";
       if (cleanHtml && contentInput) contentInput.value = cleanHtml;
       if (lastGen.slug && slugInput) slugInput.value = lastGen.slug;
       if (lastGen.tags && document.getElementById("post-tags")) document.getElementById("post-tags").value = lastGen.tags;

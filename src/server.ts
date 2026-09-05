@@ -507,6 +507,11 @@ export function createHandler(ctx: ServerContext): Handler {
 ${useWebSearch ? "\nIMPORTANTE: A pesquisa web em tempo real esta ativada. Incorpore fatos recentes, estatisticas, referencias e informacoes atualizadas com autoridade editorial." : ""}
 ${newsGrounding}
 
+REGRA CRÍTICA E MANDATÓRIA:
+O campo "content_html" é OBRIGATÓRIO e é o corpo principal do artigo. NUNCA omita o "content_html".
+Ele DEVE conter o texto COMPLETO do artigo (mínimo de 800 a 1500 palavras), dividido em seções com <h2>, <h3>, <p>, <ul>, <li>, <strong>, <em> e <a>.
+É estritamente proibido retornar apenas o título ou resumo sem o corpo do artigo completo no "content_html".
+
 DIRETRIZES RIGOROSAS DE FORMATAÇÃO:
 - O content_html DEVE ser estruturado EXCLUSIVAMENTE em HTML semântico limpo:
   * Cada parágrafo DEVE estar envolvido na tag <p>...</p>.
@@ -523,14 +528,14 @@ Formato JSON esperado:
 {
   "title": "Titulo atraente e magnetico do artigo",
   "excerpt": "Resumo conciso de ate 160 caracteres",
-  "content_html": "<p>Primeiro paragrafo...</p><h2>Subtitulo</h2><p>Segundo paragrafo...</p>",
+  "content_html": "<p>Introducao detalhada...</p><h2>Primeiro Subtitulo</h2><p>Explicacao completa com analise e fatos...</p><h2>Segundo Subtitulo</h2><p>Mais detalhes praticos...</p><ul><li>Ponto 1</li><li>Ponto 2</li></ul><h2>Conclusao</h2><p>Fechamento com chamada para acao...</p>",
   "slug": "slug-otimizado",
   "tags": "tag1, tag2, tag3"
 }`;
         const result = await ctx.openrouter.chat({
           model,
           system,
-          user: `Escreva um artigo completo de blog sobre: ${prompt}`,
+          user: `Escreva agora o artigo COMPLETO e aprofundado de blog sobre o tópico: "${prompt}".\n\nATENÇÃO OBRIGATÓRIA: O campo "content_html" DEVE conter o artigo INTEGRAL E COMPLETO (mínimo de 800 a 1500 palavras em HTML semântico com <p>, <h2>, <h3>, <ul>, <li>, <strong>). Não resuma e NUNCA omita a propriedade "content_html". Retorne o JSON com todos os campos preenchidos.`,
           maxTokens: 8192,
           temperature: 0.75,
           webSearch: useWebSearch,
@@ -544,6 +549,14 @@ Formato JSON esperado:
         let slug = "";
         let tags = "";
 
+        const isPureJson = (str: string): boolean => {
+          const t = str.trim();
+          if (!t) return true;
+          if ((t.startsWith("{") && t.endsWith("}")) || (t.startsWith("<p>{") && t.endsWith("}</p>"))) return true;
+          if (t.includes('"title":') && t.includes('"excerpt":') && !t.includes("<h2") && !t.includes("</h2>")) return true;
+          return false;
+        };
+
         try {
           const article = parseArticleJson(result.content);
           title = article.title;
@@ -556,7 +569,10 @@ Formato JSON esperado:
             const parsed = safeParseJson(result.content);
             title = String(parsed.title || "").trim();
             excerpt = String(parsed.excerpt || "").trim();
-            contentHtml = ensureSemanticHtml(String(parsed.content_html || parsed.content || ""));
+            const rawBody = String(parsed.content_html || parsed.content || "");
+            if (rawBody && !isPureJson(rawBody)) {
+              contentHtml = ensureSemanticHtml(rawBody);
+            }
             slug = String(parsed.slug || "").trim();
             tags = String(parsed.tags || "").trim();
           } catch {
@@ -575,27 +591,55 @@ Formato JSON esperado:
 
             const contentMatch = raw.match(/"content_html"\s*:\s*"([\s\S]*?)"\s*,\s*"(?:slug|tags)"/);
             if (contentMatch) {
-              contentHtml = ensureSemanticHtml(contentMatch[1]);
+              const matchedHtml = ensureSemanticHtml(contentMatch[1]);
+              if (!isPureJson(matchedHtml)) contentHtml = matchedHtml;
             } else {
               const altMatch = raw.match(/"content_html"\s*:\s*"([\s\S]*)/);
               if (altMatch) {
                 const cleaned = altMatch[1]
                   .replace(/"\s*}\s*```?[\s\S]*$/, "")
                   .replace(/"\s*,\s*"[^"]+"\s*:[\s\S]*$/, "");
-                contentHtml = ensureSemanticHtml(cleaned);
-              } else {
-                const stripped = cleanJsonText(raw)
-                  .replace(/<think>[\s\S]*?<\/think>/gi, "")
-                  .replace(/```(?:json)?[\s\S]*?```/gi, "")
-                  .trim();
-                contentHtml = ensureSemanticHtml(stripped);
+                const candidate = ensureSemanticHtml(cleaned);
+                if (!isPureJson(candidate)) contentHtml = candidate;
               }
             }
           }
         }
 
-        if (!contentHtml) {
-          contentHtml = ensureSemanticHtml(result.content);
+        // Auto-recuperação: Se o modelo retornou apenas metadados e omitiu o corpo do artigo (content_html)
+        if (!contentHtml || contentHtml.length < 250 || isPureJson(contentHtml)) {
+          try {
+            const articleTitle = title || prompt;
+            const articleExcerpt = excerpt || `Guia completo sobre ${prompt}.`;
+            const bodyResult = await ctx.openrouter.chat({
+              model,
+              system: `Voce e um redator profissional de blog brasileiro senior. Escreva o artigo COMPLETO, aprofundado e altamente informativo em HTML semantico puro.
+DIRETRIZES:
+- Escreva o texto integral do artigo (minimo de 800 a 1500 palavras).
+- Use exclusivamente HTML semantico: <p> para paragrafos, <h2> para topicos principais, <h3> para subtopicos, <ul><li> para listas, <strong> e <em> para enfase.
+- Proibido usar markdown fences (\`\`\`html) e proibido conversas ou preambulos.
+- Retorne EXCLUSIVAMENTE as tags HTML prontas para publicacao no blog.
+- Sem emojis.`,
+              user: `Escreva o artigo completo e detalhado para:
+Título: "${articleTitle}"
+Resumo de Referência: "${articleExcerpt}"
+Tópico: "${prompt}"
+
+Desenvolva uma introdução envolvente (<p>), 4 a 6 seções aprofundadas com subtítulos (<h2> e <h3>), listas práticas (<ul> e <li>) e uma conclusão impactante. Comece diretamente com a primeira tag <p>.`,
+              maxTokens: 8192,
+              temperature: 0.75,
+              webSearch: useWebSearch,
+            });
+
+            const directHtml = ensureSemanticHtml(bodyResult.content);
+            if (directHtml && directHtml.length >= 150 && !isPureJson(directHtml)) {
+              contentHtml = directHtml;
+            }
+          } catch { /* fallback */ }
+        }
+
+        if (!contentHtml || isPureJson(contentHtml)) {
+          contentHtml = `<p>${excerpt || title || prompt}</p>`;
         }
 
         return json({

@@ -340,3 +340,19 @@ Esperamos que aproveite o artigo!`;
   assert.ok(!parsed.contentHtml.includes("```"));
 });
 
+test("parseArticleJson: JSON sem content_html lança erro e não vaza JSON no corpo", async () => {
+  const { parseArticleJson } = await import("../src/agent.ts");
+
+  const sampleWithoutBody = JSON.stringify({
+    title: "Como Ganhar Dinheiro no TikTok em 2026",
+    excerpt: "Descubra as estratégias mais atualizadas.",
+    slug: "como-ganhar-dinheiro-no-tiktok-2026",
+    tags: "tiktok, monetizacao",
+  });
+
+  assert.throws(() => {
+    parseArticleJson(sampleWithoutBody);
+  }, /Artigo muito curto|não contém content_html/i);
+});
+
+
