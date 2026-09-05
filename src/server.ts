@@ -753,6 +753,25 @@ Desenvolva uma introdução envolvente (<p>), 4 a 6 seções aprofundadas com su
           user = `Sugira entre 4 e 6 tags relevantes separadas por vírgula para este artigo:\nTítulo: "${title}"\nConteúdo: ${content.slice(0, 800)}\nRetorne apenas as tags separadas por vírgula.`;
         } else if (action === "generate_slug") {
           user = `Gere apenas o slug de URL otimizado em minúsculas com hifens (sem acentos nem pontuação) para o título: "${title}". Retorne apenas o slug.`;
+        } else if (action === "write_content") {
+          const articleSystem = `Voce e um redator profissional senior de blog brasileiro. Escreva o artigo COMPLETO, aprofundado e altamente informativo em HTML semantico puro.
+DIRETRIZES:
+- Escreva o texto integral do artigo (minimo de 800 a 1500 palavras).
+- Use exclusivamente HTML semantico: <p> para paragrafos, <h2> para topicos principais, <h3> para subtopicos, <ul><li> para listas, <strong> e <em> para enfase.
+- Proibido usar markdown fences e proibido conversas ou preambulos.
+- Retorne EXCLUSIVAMENTE as tags HTML prontas para publicacao no editor.
+- Sem emojis.`;
+          const articleUser = `Escreva o artigo completo e aprofundado para o titulo: "${title}".\nResumo/Base: "${content}".\nComece imediatamente com a primeira tag <p>.`;
+          const res = await ctx.openrouter.chat({
+            model,
+            system: articleSystem,
+            user: articleUser,
+            maxTokens: 8192,
+            temperature: 0.75,
+            webSearch: true,
+          });
+          const formatted = ensureSemanticHtml(res.content);
+          return json({ result: formatted });
         } else {
           return json({ error: "Ação de assistência inválida." }, 400);
         }

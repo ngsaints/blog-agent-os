@@ -2994,7 +2994,13 @@ export function renderCreatePostTab(data: DashboardData): string {
           <!-- Content Editor Section -->
           <div>
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;flex-wrap:wrap;gap:8px">
-              <label for="post-content" style="margin:0;font-weight:600">Conteúdo do Artigo</label>
+              <div style="display:flex;align-items:center;gap:10px">
+                <label for="post-content" style="margin:0;font-weight:600">Conteúdo do Artigo</label>
+                <button type="button" class="button button-xs button-secondary" id="btn-quick-content-ai" title="Escrever artigo completo diretamente com IA para este título" style="display:inline-flex;align-items:center;gap:4px">
+                  <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+                  Escrever Artigo com IA
+                </button>
+              </div>
               <div class="editor-mode-nav">
                 <button type="button" class="editor-mode-btn active" id="btn-mode-html">Editor HTML</button>
                 <button type="button" class="editor-mode-btn" id="btn-mode-preview">Visualização ao Vivo</button>
@@ -3608,6 +3614,52 @@ export function renderCreatePostTab(data: DashboardData): string {
     switchSidebarTab("seo");
     if (btnSeoTags) btnSeoTags.click();
   });
+
+  var btnQuickContentAi = document.getElementById("btn-quick-content-ai");
+  if (btnQuickContentAi) {
+    btnQuickContentAi.addEventListener("click", function(){
+      var title = titleInput ? titleInput.value.trim() : "";
+      var prompt = title || (document.getElementById("gen-prompt") ? document.getElementById("gen-prompt").value.trim() : "");
+      if (!prompt) {
+        alert("Preencha o Título do Artigo acima para que a IA possa redigir o artigo completo.");
+        if (titleInput) titleInput.focus();
+        return;
+      }
+      var origText = btnQuickContentAi.innerHTML;
+      btnQuickContentAi.disabled = true;
+      btnQuickContentAi.innerHTML = '<span style="display:inline-block;width:11px;height:11px;border:2px solid #999;border-top-color:#000;border-radius:50%;animation:spin 0.6s linear infinite;margin-right:4px"></span> Escrevendo Artigo...';
+
+      var m = document.getElementById("gen-model") ? document.getElementById("gen-model").value : "";
+      var ws = document.getElementById("gen-web-search") ? document.getElementById("gen-web-search").checked : true;
+      var catId = cs ? parseInt(cs.value) || 0 : 0;
+
+      api("/admin/create-post/generate-content", { prompt: prompt, model: m, web_search: ws, category_id: catId })
+        .then(function(res){
+          btnQuickContentAi.disabled = false;
+          btnQuickContentAi.innerHTML = origText;
+          if (res.error) {
+            alert("Erro ao escrever artigo: " + res.error);
+            return;
+          }
+          if (res.content_html && contentInput) {
+            var clean = formatSemanticHtmlClient(res.content_html);
+            if (clean) contentInput.value = clean;
+          }
+          if (res.title && titleInput && !titleInput.value) titleInput.value = res.title;
+          if (res.excerpt && excerptInput && !excerptInput.value) excerptInput.value = res.excerpt;
+          if (res.slug && slugInput && !slugInput.value) slugInput.value = res.slug;
+          if (res.tags && document.getElementById("post-tags") && !document.getElementById("post-tags").value) {
+            document.getElementById("post-tags").value = res.tags;
+          }
+          updateMetrics();
+        })
+        .catch(function(err){
+          btnQuickContentAi.disabled = false;
+          btnQuickContentAi.innerHTML = origText;
+          alert("Erro: " + err.message);
+        });
+    });
+  }
 
   // --- Semantic HTML Formatter (Client Defense) ---
   function formatSemanticHtmlClient(raw){
