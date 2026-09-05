@@ -2132,9 +2132,9 @@ export function renderLogsTab(agents: Agent[]): string {
 
 export function runDetailsModal(): string {
   return `
-  <div class="modal" id="run-details-modal" style="display:none;z-index:9999">
+  <div class="modal" id="run-details-modal" style="display:none;position:fixed;inset:0;z-index:9999;place-items:center;justify-content:center;align-items:center">
     <div class="modal-backdrop" onclick="closeRunDetails()"></div>
-    <div class="modal-panel" style="max-width:920px;width:95vw;max-height:92vh;display:flex;flex-direction:column">
+    <div class="modal-panel" style="margin:auto;max-width:920px;width:min(920px,95vw);max-height:92vh;display:flex;flex-direction:column;position:relative;z-index:2">
       <div class="modal-head" style="flex-shrink:0;align-items:flex-start">
         <div>
           <p class="eyebrow" id="rd-eyebrow">Diagnóstico de Execução</p>
@@ -2546,7 +2546,7 @@ export function runDetailsModalJs(): string {
     var content = document.getElementById("rd-content");
     if (!modal) return;
 
-    modal.style.display = "flex";
+    modal.style.display = "grid";
     if (title) title.innerText = "Execução #" + runId;
     if (subtitle) subtitle.innerText = "Carregando dados da execução...";
     if (content) content.innerHTML = '<div style="text-align:center;padding:40px;color:var(--c-text-muted)"><div class="spinner" style="margin-bottom:8px"></div>Obtendo diagnóstico e logs completos...</div>';
