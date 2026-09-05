@@ -1043,7 +1043,7 @@ function agentProfileModal(agent: Agent, runs: Run[], blogs: Blog[]): string {
         : `<span title="${escapeHtml(postText)}">${escapeHtml(postText)}</span>`;
 
       const diagBtn = `<button type="button" class="log-inspect-btn ${r.status === 'error' ? 'btn-error' : ''}" onclick="openRunDetails(${r.id})" title="Ver logs detalhados e diagnóstico desta execução">
-        ${r.status === 'error' ? '🔴 Diagnóstico' : r.status === 'running' ? '⏳ Acompanhar' : '📄 Ver Log'}
+        ${r.status === 'error' ? 'Diagnóstico' : r.status === 'running' ? 'Acompanhar' : 'Ver Log'}
       </button>`;
 
       return `<tr>
@@ -1081,7 +1081,7 @@ function agentProfileModal(agent: Agent, runs: Run[], blogs: Blog[]): string {
         <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
         Alerta da Última Execução
       </div>
-      ${agentRuns.length > 0 ? `<button type="button" class="log-inspect-btn btn-error" onclick="openRunDetails(${agentRuns[0].id})">🔍 Inspecionar Diagnóstico</button>` : ''}
+      ${agentRuns.length > 0 ? `<button type="button" class="log-inspect-btn btn-error" onclick="openRunDetails(${agentRuns[0].id})">Inspecionar Diagnóstico</button>` : ''}
     </div>
     <div style="font-size:12.5px;word-break:break-word">${escapeHtml(agent.lastError)}</div>
   </div>` : ''}
@@ -1181,7 +1181,7 @@ function runRow(run: Run, agents: Agent[] = []): string {
   const agentAvatar = agent ? renderAvatar(agent.avatar, 22) : "";
 
   const diagBtn = `<button type="button" class="log-inspect-btn ${run.status === 'error' ? 'btn-error' : ''}" onclick="openRunDetails(${run.id})" title="Ver logs detalhados e diagnóstico desta execução">
-    ${run.status === 'error' ? '🔴 Diagnóstico' : run.status === 'running' ? '⏳ Acompanhar' : '📄 Ver Log'}
+    ${run.status === 'error' ? 'Diagnóstico' : run.status === 'running' ? 'Acompanhar' : 'Ver Log'}
   </button>`;
 
   return `<tr>
@@ -1272,7 +1272,7 @@ function allRunsRow(run: Run, agents: Agent[] = []): string {
   const searchBlob = `${fmtDate(run.startedAt)} ${agentName} Agente #${run.agentId} ${run.status} ${post} ${model} ${error}`;
 
   const diagBtn = `<button type="button" class="log-inspect-btn ${run.status === 'error' ? 'btn-error' : ''}" onclick="openRunDetails(${run.id})" title="Ver logs detalhados e diagnóstico desta execução">
-    ${run.status === 'error' ? '🔴 Diagnóstico' : run.status === 'running' ? '⏳ Acompanhar' : '📄 Ver Log'}
+    ${run.status === 'error' ? 'Diagnóstico' : run.status === 'running' ? 'Acompanhar' : 'Ver Log'}
   </button>`;
 
   return `<tr class="all-runs-row" data-search="${escapeHtml(searchBlob)}" data-status="${escapeHtml(run.status)}">
@@ -2087,14 +2087,17 @@ export function renderLogsTab(agents: Agent[]): string {
           <input type="checkbox" id="syslog-auto-refresh" checked style="width:15px;height:15px">
           Auto-refresh (3s)
         </label>
-        <button type="button" class="button button-sm button-secondary" id="btn-refresh-logs" onclick="loadSystemLogs()">
-          🔄 Atualizar Agora
+        <button type="button" class="button button-sm button-secondary" id="btn-refresh-logs" onclick="loadSystemLogs()" style="display:inline-flex;align-items:center;gap:6px">
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+          Atualizar Agora
         </button>
-        <button type="button" class="button button-sm button-secondary" id="btn-copy-logs" onclick="copySystemLogs()">
-          📋 Copiar Logs
+        <button type="button" class="button button-sm button-secondary" id="btn-copy-logs" onclick="copySystemLogs()" style="display:inline-flex;align-items:center;gap:6px">
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          Copiar Logs
         </button>
-        <button type="button" class="button button-sm button-secondary" id="btn-clear-logs" onclick="clearSystemLogs()" style="color:var(--c-danger)">
-          🗑️ Limpar
+        <button type="button" class="button button-sm button-secondary" id="btn-clear-logs" onclick="clearSystemLogs()" style="color:var(--c-danger);display:inline-flex;align-items:center;gap:6px">
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+          Limpar
         </button>
       </div>
     </div>
@@ -2104,10 +2107,10 @@ export function renderLogsTab(agents: Agent[]): string {
       <div style="display:flex;flex-wrap:wrap;align-items:center;gap:6px">
         <span style="font-size:12px;font-weight:600;color:var(--c-text-soft);margin-right:4px">Nível:</span>
         <button type="button" class="log-level-btn active" data-level="" onclick="filterLogLevel('')">Todos</button>
-        <button type="button" class="log-level-btn" data-level="error" onclick="filterLogLevel('error')">❌ Erros</button>
-        <button type="button" class="log-level-btn" data-level="warn" onclick="filterLogLevel('warn')">⚠️ Avisos</button>
-        <button type="button" class="log-level-btn" data-level="success" onclick="filterLogLevel('success')">✅ Sucesso</button>
-        <button type="button" class="log-level-btn" data-level="info" onclick="filterLogLevel('info')">ℹ️ Info</button>
+        <button type="button" class="log-level-btn" data-level="error" onclick="filterLogLevel('error')">Erros</button>
+        <button type="button" class="log-level-btn" data-level="warn" onclick="filterLogLevel('warn')">Avisos</button>
+        <button type="button" class="log-level-btn" data-level="success" onclick="filterLogLevel('success')">Sucesso</button>
+        <button type="button" class="log-level-btn" data-level="info" onclick="filterLogLevel('info')">Info</button>
       </div>
       <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:220px;max-width:440px">
         <select id="syslog-agent-filter" onchange="loadSystemLogs()" style="height:34px;font-size:12px;padding:0 8px;border-radius:8px">
@@ -2141,7 +2144,7 @@ export function runDetailsModal(): string {
           </div>
           <p class="muted" id="rd-subtitle" style="margin-top:4px;font-size:13px"></p>
         </div>
-        <button type="button" class="modal-close" onclick="closeRunDetails()" style="background:none;border:none;font-size:24px;cursor:pointer;line-height:1;color:var(--c-text-soft)">×</button>
+        <button type="button" class="modal-close" onclick="closeRunDetails()" style="background:none;border:none;font-size:24px;cursor:pointer;line-height:1;color:var(--c-text-soft)" aria-label="Fechar">×</button>
       </div>
 
       <div id="rd-content" style="overflow-y:auto;flex:1;padding-right:4px;margin-top:12px">
@@ -2149,10 +2152,11 @@ export function runDetailsModal(): string {
       </div>
 
       <div class="modal-foot" style="display:flex;align-items:center;justify-content:space-between;padding-top:14px;border-top:1px solid var(--c-border);margin-top:14px;flex-shrink:0">
-        <button type="button" class="button button-sm button-secondary" id="btn-copy-run-log" onclick="copyRunLog()">
-          📋 Copiar Log Completo
+        <button type="button" class="button button-sm button-secondary" id="btn-copy-run-log" onclick="copyRunLog()" style="display:inline-flex;align-items:center;gap:6px">
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          Copiar Log Completo
         </button>
-        <button type="button" class="button button-sm button-secondary" onclick="closeRunDetails()">
+        <button type="button" class="button button-sm button-secondary" onclick="closeRunDetails()" style="min-width:80px">
           Fechar
         </button>
       </div>
@@ -2481,7 +2485,7 @@ export function logsTabJs(): string {
       var btn = document.getElementById("btn-copy-logs");
       if (btn) {
         var original = btn.innerHTML;
-        btn.innerHTML = "✅ Copiado!";
+        btn.innerHTML = "Copiado!";
         setTimeout(function(){ btn.innerHTML = original; }, 2000);
       }
     });
@@ -2617,7 +2621,7 @@ export function runDetailsModalJs(): string {
             '</div>' +
             '<div style="font-size:13px;font-weight:500;margin-bottom:6px;word-break:break-word">' + escapeHtml(errMsg) + '</div>' +
             '<div style="font-size:12px;color:#7f1d1d;line-height:1.4;background:rgba(255,255,255,.6);padding:8px 10px;border-radius:8px;border:1px solid rgba(239,68,68,.2)">' +
-              '💡 <strong>Recomendação:</strong> ' + escapeHtml(hint) +
+              '<strong>Recomendação:</strong> ' + escapeHtml(hint) +
             '</div>' +
           '</div>';
         }
@@ -2676,7 +2680,7 @@ export function runDetailsModalJs(): string {
       var btn = document.getElementById("btn-copy-run-log");
       if (btn) {
         var original = btn.innerHTML;
-        btn.innerHTML = "✅ Copiado!";
+        btn.innerHTML = "Copiado!";
         setTimeout(function(){ btn.innerHTML = original; }, 2000);
       }
     });

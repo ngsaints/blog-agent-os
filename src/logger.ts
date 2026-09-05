@@ -65,13 +65,13 @@ class SystemLogger {
     const tag = `[${entry.source}]`;
     const prefix = `[${entry.timestamp.substring(11, 19)}] ${tag}`;
     if (level === "error") {
-      console.error(`${prefix} ❌ ${message}${details ? `\n${details}` : ""}`);
+      console.error(`${prefix} [ERRO] ${message}${details ? `\n${details}` : ""}`);
     } else if (level === "warn") {
-      console.warn(`${prefix} ⚠️ ${message}${details ? `\n${details}` : ""}`);
+      console.warn(`${prefix} [AVISO] ${message}${details ? `\n${details}` : ""}`);
     } else if (level === "success") {
-      console.log(`${prefix} ✅ ${message}`);
+      console.log(`${prefix} [OK] ${message}`);
     } else {
-      console.log(`${prefix} ℹ️ ${message}`);
+      console.log(`${prefix} [INFO] ${message}`);
     }
 
     return entry;
@@ -160,7 +160,7 @@ class SystemLogger {
         return steps
           .map((s) => {
             const time = s.timestamp.substring(11, 19);
-            const icon = s.level === "error" ? "❌ [ERRO]" : s.level === "warn" ? "⚠️ [AVISO]" : s.level === "success" ? "✅ [OK]" : "ℹ️ [INFO]";
+            const icon = s.level === "error" ? "[ERRO]" : s.level === "warn" ? "[AVISO]" : s.level === "success" ? "[OK]" : "[INFO]";
             let line = `[${time}] ${icon} ${s.message}`;
             if (s.details) {
               line += `\n   Detalhes: ${s.details.replace(/\n/g, "\n   ")}`;
@@ -173,7 +173,7 @@ class SystemLogger {
         return steps
           .map((s) => {
             const time = s.timestamp.substring(11, 19);
-            const icon = s.level === "error" ? "❌ [ERRO]" : s.level === "warn" ? "⚠️ [AVISO]" : s.level === "success" ? "✅ [OK]" : "ℹ️ [INFO]";
+            const icon = s.level === "error" ? "[ERRO]" : s.level === "warn" ? "[AVISO]" : s.level === "success" ? "[OK]" : "[INFO]";
             let line = `[${time}] ${icon} ${s.message}`;
             if (s.details) {
               line += `\n   Detalhes: ${s.details.replace(/\n/g, "\n   ")}`;
