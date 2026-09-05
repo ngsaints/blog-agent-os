@@ -440,6 +440,9 @@ Por favor, faça a revisão completa e retorne o JSON final aprimorado.`;
     user: userPrompt,
     maxTokens: reviewer.maxTokens || 8192,
     temperature: 0.7,
+    webSearch: Boolean(reviewer.toolsEnabled),
+    subagent: Boolean(reviewer.toolsEnabled),
+    advisor: Boolean(reviewer.toolsEnabled),
   }, "article_review");
 
   const polished = parseArticleJson(completion.content);
@@ -851,31 +854,31 @@ export async function runAgentOnce(
     }
 
     let recentNews: NewsItem[] = [];
+    try {
+      // 1. Consultar biblioteca de fontes RSS ativas da categoria
+      const rssSources = await store.listRssSources(agent.categoryId);
+      const activeRss = rssSources.filter((s) => s.isActive);
+      if (activeRss.length > 0) {
+        runLog.step(`Consultando ${activeRss.length} fontes RSS ativas cadastradas para a categoria...`);
+        const feedArticles = await fetchMultiFeedRadar(activeRss, 6);
+        for (const art of feedArticles) {
+          recentNews.push({
+            title: art.title,
+            source: art.source,
+            pubDate: art.pubDate,
+            link: art.link,
+          });
+        }
+      }
+    } catch (rssErr) {
+      runLog.warn(`Erro ao consultar biblioteca RSS: ${rssErr instanceof Error ? rssErr.message : rssErr}`);
+    }
+
     if (agent.toolsEnabled) {
       try {
-        runLog.step("Pesquisando notícias de última hora para embasar a pauta...");
-        // 1. Consultar biblioteca de fontes RSS ativas da categoria
-        try {
-          const rssSources = await store.listRssSources(agent.categoryId);
-          const activeRss = rssSources.filter((s) => s.isActive);
-          if (activeRss.length > 0) {
-            runLog.info(`Consultando ${activeRss.length} fontes RSS ativas cadastradas para a categoria...`);
-            const feedArticles = await fetchMultiFeedRadar(activeRss, 6);
-            for (const art of feedArticles) {
-              recentNews.push({
-                title: art.title,
-                source: art.source,
-                pubDate: art.pubDate,
-                link: art.link,
-              });
-            }
-          }
-        } catch (rssErr) {
-          runLog.warn(`Erro ao consultar biblioteca RSS: ${rssErr instanceof Error ? rssErr.message : rssErr}`);
-        }
-
         // 2. Complementar com Google News RSS em tempo real se necessário
         if (recentNews.length < 3) {
+          runLog.step("Pesquisando notícias de última hora complementares...");
           const newsQuery = task?.trim() || agent.description?.trim() || "tecnologia inovacao inteligencia artificial";
           const googleNews = await fetchRecentNews(newsQuery, 5);
           for (const item of googleNews) {
@@ -884,19 +887,19 @@ export async function runAgentOnce(
             }
           }
         }
-
-        if (recentNews.length > 0) {
-          recentNews = recentNews.slice(0, 6);
-          runLog.info(
-            `Notícias quentes em tempo real obtidas (${recentNews.length} fontes)`,
-            recentNews.map((n) => `• [${n.source}] ${n.title} (${n.pubDate})`).join("\n"),
-          );
-        } else {
-          runLog.info("Nenhuma notícia em tempo real encontrada nos feeds diretos; o agente usará busca autônoma se necessário.");
-        }
       } catch (newsErr) {
-        runLog.warn(`Feed de notícias em tempo real indisponível: ${newsErr instanceof Error ? newsErr.message : newsErr}`);
+        runLog.warn(`Feed de notícias complementares indisponível: ${newsErr instanceof Error ? newsErr.message : newsErr}`);
       }
+    }
+
+    if (recentNews.length > 0) {
+      recentNews = recentNews.slice(0, 6);
+      runLog.info(
+        `Notícias quentes em tempo real obtidas (${recentNews.length} fontes)`,
+        recentNews.map((n) => `• [${n.source}] ${n.title} (${n.pubDate})`).join("\n"),
+      );
+    } else {
+      runLog.info("Nenhuma notícia em tempo real encontrada nos feeds diretos; o agente usará busca autônoma se necessário.");
     }
 
     let article: Article;
@@ -938,6 +941,8 @@ export async function runAgentOnce(
           maxTokens: agent.maxTokens,
           temperature: 0.85,
           webSearch: true,
+          subagent: true,
+          advisor: true,
         }, "article_generation");
         article = parseArticleJson(completion.content);
         totalTokensIn = completion.promptTokens;
@@ -954,6 +959,8 @@ export async function runAgentOnce(
         maxTokens: agent.maxTokens,
         temperature: 0.85,
         webSearch: Boolean(agent.toolsEnabled),
+        subagent: Boolean(agent.toolsEnabled),
+        advisor: Boolean(agent.toolsEnabled),
       }, "article_generation");
       article = parseArticleJson(completion.content);
       totalTokensIn = completion.promptTokens;

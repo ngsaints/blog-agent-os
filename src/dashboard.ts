@@ -67,15 +67,15 @@ button,.button{
   text-decoration:none;cursor:pointer;white-space:nowrap;
   transition:background .15s ease,transform .16s cubic-bezier(.16,1,.3,1),box-shadow .16s ease;
 }
-.button,.btn-primary{
+.button,.btn-primary,button[type=submit]:not(.button-secondary):not(.button-danger):not(.status-pill){
   background:#202226;color:#fff;
   box-shadow:0 6px 18px rgba(20,22,28,.2),0 1px 2px rgba(0,0,0,.1);
 }
-.button:hover,.btn-primary:hover{
+.button:hover,.btn-primary:hover,button[type=submit]:not(.button-secondary):not(.button-danger):not(.status-pill):hover{
   background:#090a0c;transform:translateY(-1.5px);
   box-shadow:0 10px 24px rgba(20,22,28,.28),0 2px 6px rgba(0,0,0,.1);
 }
-.button:active,.btn-primary:active{transform:translateY(0);box-shadow:0 3px 10px rgba(20,22,28,.18)}
+.button:active,.btn-primary:active,button[type=submit]:not(.button-secondary):not(.button-danger):not(.status-pill):active{transform:translateY(0);box-shadow:0 3px 10px rgba(20,22,28,.18)}
 .button-secondary{
   background:rgba(255,255,255,.88);color:#2f3339;
   border-color:rgba(0,0,0,.08);
@@ -869,7 +869,7 @@ export function dashboardPage(data: DashboardData): Response {
       <aside class="stack stack-aside">
         <section class="card"><div class="section-head"><div><p class="eyebrow">Agendamento</p><h2>Execução automática</h2></div></div>
         <p class="muted" style="margin-bottom:14px">O loop local verifica redatores ativos a cada <span style="font-weight:500">${data.runInterval} min</span>. Na nuvem, use o cron do Deno Deploy apontando para <code>/__cron</code>.</p>
-        <form method="post" action="/admin/run-due"><button type="submit">Executar agentes devidos agora</button></form>
+        <form method="post" action="/admin/run-due"><button type="submit" class="button button-sm" style="width:100%">Executar agentes devidos agora</button></form>
         <div class="divider"></div>
         <div class="notice">Os agentes são executados em segundo plano no painel. Redatores com revisor associado passam por validação automática antes da publicação.</div></section>
       </aside>
@@ -1617,11 +1617,11 @@ function newAgentModal(
     </div>
   </div>
   <div>
-    <label for="role-new">Papel do agente</label>
+    <label for="role-new">Papel do agente na redação</label>
     <select id="role-new" name="role">
-      <option value="writer" selected>Redator de Artigos (Gera artigos completos com SEO)</option>
+      <option value="writer" selected>Redator Principal (Gera artigos completos com SEO e grounding)</option>
       <option value="image_creator">Criador Visual / Pinterest (Foco em imagens de alta qualidade e Pins)</option>
-      <option value="reviewer">Revisor / Editor-Chefe (Valida e aprimora rascunhos)</option>
+      <option value="reviewer">Subagente Revisor / Editor-Chefe (Valida, pontua e aprimora rascunhos)</option>
     </select>
   </div>
   <div>
@@ -1633,23 +1633,23 @@ function newAgentModal(
     </select>
   </div>
   <div>
-    <label for="reviewer-new">Revisor vinculado (opcional para Redatores)</label>
+    <label for="reviewer-new">Subagente Revisor Vinculado (Advisor Multi-Agente)</label>
     <select id="reviewer-new" name="reviewer_id">
       <option value="">Nenhum (Publicação direta sem revisão)</option>
       ${reviewers.map((r) => `<option value="${r.id}">${escapeHtml(r.name)} (${escapeHtml(r.model)})</option>`).join("")}
     </select>
-    <p class="field-help">Se definido, os rascunhos deste redator serão revisados por este agente antes da publicação.</p>
+    <p class="field-help">Delegação Multi-Agente: se definido, o artigo deste redator passará pela avaliação crítica e polimento editorial do subagente antes de ser publicado no blog.</p>
   </div>
   <div><label for="description">Descrição / foco</label><textarea id="description" name="description" placeholder="Ex.: Notícias e tutoriais sobre inteligência artificial"></textarea></div>
   <div>
     <label for="model-cb-new">Modelo de Texto / IA (OpenRouter)</label>
     ${modelCombobox("new", "model", defaultModel, models, false)}
-    <p class="field-help">Gera o texto (artigo longo ou copy/texto de Pin) e títulos SEO.</p>
+    <p class="field-help">Gera o texto (artigo longo ou copy/texto de Pin) e títulos SEO. Campo de pesquisa integrado.</p>
   </div>
   <div>
     <label for="model-cb-new-img">Modelo de Imagem (OpenRouter)</label>
     ${modelCombobox("new-img", "image_model", defaultImageModel, models, true)}
-    <p class="field-help">Gera a arte visual no formato selecionado (9:16, 16:9 ou 1:1).</p>
+    <p class="field-help">Gera a arte visual no formato selecionado (9:16, 16:9 ou 1:1). Campo de pesquisa integrado.</p>
   </div>
   <div>
     <label for="image_source_mode_new">Fonte da Imagem de Capa / Pin</label>
@@ -1662,18 +1662,37 @@ function newAgentModal(
     <p class="field-help">Escolha se o agente gera com IA, pega fotos reais do Pexels ou equilibra automaticamente para economizar créditos.</p>
   </div>
   ${blogCategoryFields("new", blogs, null)}
+  <div style="background:var(--c-bg);border:1px solid var(--c-border);border-radius:var(--radius);padding:12px 14px;margin-top:2px;display:flex;align-items:flex-start;gap:10px">
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" style="color:#10b981;margin-top:2px;flex-shrink:0"><path d="M4 11a9 9 0 0 1 9 9"/><path d="M4 4a16 16 0 0 1 16 16"/><circle cx="5" cy="19" r="1"/></svg>
+    <div style="font-size:12px;line-height:1.45;color:var(--c-text-soft)">
+      <strong style="color:var(--c-text);display:block;margin-bottom:2px">Radar RSS & Grounding em Tempo Real:</strong>
+      O agente consultará automaticamente as fontes ativas da categoria selecionada cadastradas na aba <em>Fontes RSS & Radar</em> (Canaltech, G1, TecMundo, etc.) para utilizar notícias e fatos do dia como gancho para as publicações.
+    </div>
+  </div>
   <div><label for="prompt">Instruções extras / Diretrizes visuais (opcional)</label><textarea id="prompt" name="prompt" placeholder="Ex.: Foque em estética minimalista, iluminação cinematográfica e cores vibrantes."></textarea></div>
   <div><label for="daily_post_limit_new">Cota diária deste agente (máx. posts/dia)</label><input id="daily_post_limit_new" name="daily_post_limit" type="number" min="0" value="0"><p class="field-help">0 = segue o limite padrão global das Configurações.</p></div>
   <div><label for="schedule_minutes">Frequência (minutos)</label><input id="schedule_minutes" name="schedule_minutes" type="number" min="15" value="720"></div>
   <div><label for="max_tokens">Máx. tokens de resposta</label><input id="max_tokens" name="max_tokens" type="number" min="512" max="65536" value="8192"></div>
+  <div style="background:rgba(255,255,255,.5);border:1px solid var(--c-border);border-radius:var(--radius);padding:13px 15px;margin-top:2px">
+    <div style="display:flex;align-items:center;gap:7px;margin-bottom:8px">
+      <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--c-accent)"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+      <span style="font-size:12.5px;font-weight:600;color:var(--c-text)">Inteligência Autônoma & Ferramentas de Rede</span>
+    </div>
+    <label class="checkbox-label" style="align-items:flex-start">
+      <input type="checkbox" name="tools_enabled" checked style="margin-top:3px">
+      <div>
+        <span style="font-weight:500;color:var(--c-text)">Pesquisa Web em Tempo Real & Subagentes (Agent SDK / Search Tools)</span>
+        <span style="font-size:11.5px;color:var(--c-text-muted);display:block;line-height:1.4;margin-top:2px">Habilita navegação e busca web autônoma em tempo real para pesquisar novidades, checar fatos e delegar tarefas para subagentes e advisor.</span>
+      </div>
+    </label>
+  </div>
   <div class="check-group">
-    <label class="checkbox-label"><input type="checkbox" name="tools_enabled">Pesquisa Web & Tools (Agent SDK)</label>
     <label class="checkbox-label"><input type="checkbox" name="publish_to_blog" checked>Publicar no blog</label>
     <label class="checkbox-label"><input type="checkbox" name="pinterest_enabled" checked>Pinterest</label>
     <label class="checkbox-label"><input type="checkbox" name="image_gen" checked>Gerar imagem de capa / Pin</label>
     <label class="checkbox-label"><input type="checkbox" name="status_active" checked>Ativo (agendado)</label>
   </div>
-  <button type="submit">Criar agente</button>
+  <button type="submit" class="button" style="width:100%;min-height:46px;font-size:14px;font-weight:600;margin-top:14px;background:#202226;color:#fff;border-radius:12px">Criar agente</button>
 </form></div></div>`;
 }
 
@@ -1725,11 +1744,11 @@ function editModal(
       </div>
     </div>
     <div>
-      <label for="role-edit-${agent.id}">Papel do agente</label>
+      <label for="role-edit-${agent.id}">Papel do agente na redação</label>
       <select id="role-edit-${agent.id}" name="role">
-        <option value="writer" ${!isReviewer && !isVisual ? "selected" : ""}>Redator de Artigos (Gera artigos completos com SEO)</option>
+        <option value="writer" ${!isReviewer && !isVisual ? "selected" : ""}>Redator Principal (Gera artigos completos com SEO e grounding)</option>
         <option value="image_creator" ${isVisual ? "selected" : ""}>Criador Visual / Pinterest (Foco em imagens de alta qualidade e Pins)</option>
-        <option value="reviewer" ${isReviewer ? "selected" : ""}>Revisor / Editor-Chefe (Valida e aprimora rascunhos)</option>
+        <option value="reviewer" ${isReviewer ? "selected" : ""}>Subagente Revisor / Editor-Chefe (Valida, pontua e aprimora rascunhos)</option>
       </select>
     </div>
     <div>
@@ -1741,11 +1760,12 @@ function editModal(
       </select>
     </div>
     <div>
-      <label for="reviewer-edit-${agent.id}">Revisor vinculado (opcional)</label>
+      <label for="reviewer-edit-${agent.id}">Subagente Revisor Vinculado (Advisor Multi-Agente)</label>
       <select id="reviewer-edit-${agent.id}" name="reviewer_id">
         <option value="">Nenhum (Publicação direta sem revisão)</option>
         ${reviewers.map((r) => `<option value="${r.id}" ${agent.reviewerId === r.id ? "selected" : ""}>${escapeHtml(r.name)} (${escapeHtml(r.model)})</option>`).join("")}
       </select>
+      <p class="field-help">Delegação Multi-Agente: se definido, o artigo deste redator passará pela avaliação crítica e polimento editorial do subagente antes de ser publicado no blog.</p>
     </div>
     <div><label for="description-${agent.id}">Descrição / foco</label><textarea id="description-${agent.id}" name="description">${
     escapeHtml(agent.description)
@@ -1753,12 +1773,12 @@ function editModal(
     <div>
       <label for="model-cb-edit-${agent.id}">Modelo de Texto / IA (OpenRouter)</label>
       ${modelCombobox(`edit-${agent.id}`, "model", agent.model, models, false)}
-      <p class="field-help">Gera o texto (artigo longo ou copy/texto de Pin) e títulos SEO.</p>
+      <p class="field-help">Gera o texto (artigo longo ou copy/texto de Pin) e títulos SEO. Campo de pesquisa integrado.</p>
     </div>
     <div>
       <label for="model-cb-edit-img-${agent.id}">Modelo de Imagem (OpenRouter)</label>
       ${modelCombobox(`edit-img-${agent.id}`, "image_model", agent.imageModel, models, true)}
-      <p class="field-help">Gera a arte visual no formato selecionado (9:16, 16:9 ou 1:1).</p>
+      <p class="field-help">Gera a arte visual no formato selecionado (9:16, 16:9 ou 1:1). Campo de pesquisa integrado.</p>
     </div>
     <div>
       <label for="image_source_mode_edit_${agent.id}">Fonte da Imagem de Capa / Pin</label>
@@ -1771,16 +1791,35 @@ function editModal(
       <p class="field-help">Escolha se o agente gera com IA, pega fotos reais do Pexels ou equilibra automaticamente para economizar créditos.</p>
     </div>
     ${blogCategoryFields(`edit-${agent.id}`, blogs, agent)}
+    <div style="background:var(--c-bg);border:1px solid var(--c-border);border-radius:var(--radius);padding:12px 14px;margin-top:2px;display:flex;align-items:flex-start;gap:10px">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" style="color:#10b981;margin-top:2px;flex-shrink:0"><path d="M4 11a9 9 0 0 1 9 9"/><path d="M4 4a16 16 0 0 1 16 16"/><circle cx="5" cy="19" r="1"/></svg>
+      <div style="font-size:12px;line-height:1.45;color:var(--c-text-soft)">
+        <strong style="color:var(--c-text);display:block;margin-bottom:2px">Radar RSS & Grounding em Tempo Real:</strong>
+        O agente consultará automaticamente as fontes ativas da categoria selecionada cadastradas na aba <em>Fontes RSS & Radar</em> (Canaltech, G1, TecMundo, etc.) para utilizar notícias e fatos do dia como gancho para as publicações.
+      </div>
+    </div>
     <div><label for="prompt-${agent.id}">Instruções extras / Diretrizes visuais (opcional)</label><textarea id="prompt-${agent.id}" name="prompt">${
     escapeHtml(agent.prompt)
   }</textarea></div>
     <div><label for="daily_post_limit_edit_${agent.id}">Cota diária deste agente (máx. posts/dia)</label><input id="daily_post_limit_edit_${agent.id}" name="daily_post_limit" type="number" min="0" value="${agent.dailyPostLimit || 0}"><p class="field-help">0 = segue o limite padrão global das Configurações.</p></div>
     <div><label for="schedule_minutes-${agent.id}">Frequência (minutos)</label><input id="schedule_minutes-${agent.id}" name="schedule_minutes" type="number" min="15" value="${agent.scheduleMinutes}"></div>
     <div><label for="max_tokens-${agent.id}">Máx. tokens de resposta</label><input id="max_tokens-${agent.id}" name="max_tokens" type="number" min="512" max="65536" value="${agent.maxTokens}"></div>
+    <div style="background:rgba(255,255,255,.5);border:1px solid var(--c-border);border-radius:var(--radius);padding:13px 15px;margin-top:2px">
+      <div style="display:flex;align-items:center;gap:7px;margin-bottom:8px">
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--c-accent)"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+        <span style="font-size:12.5px;font-weight:600;color:var(--c-text)">Inteligência Autônoma & Ferramentas de Rede</span>
+      </div>
+      <label class="checkbox-label" style="align-items:flex-start">
+        <input type="checkbox" name="tools_enabled" ${
+      agent.toolsEnabled ? "checked" : ""
+    } style="margin-top:3px">
+        <div>
+          <span style="font-weight:500;color:var(--c-text)">Pesquisa Web em Tempo Real & Subagentes (Agent SDK / Search Tools)</span>
+          <span style="font-size:11.5px;color:var(--c-text-muted);display:block;line-height:1.4;margin-top:2px">Habilita navegação e busca web autônoma em tempo real para pesquisar novidades, checar fatos e delegar tarefas para subagentes e advisor.</span>
+        </div>
+      </label>
+    </div>
     <div class="check-group">
-      <label class="checkbox-label"><input type="checkbox" name="tools_enabled" ${
-    agent.toolsEnabled ? "checked" : ""
-  }>Pesquisa Web & Tools (Agent SDK)</label>
       <label class="checkbox-label"><input type="checkbox" name="publish_to_blog" ${
     agent.publishToBlog ? "checked" : ""
   }>Publicar no blog</label>
@@ -1794,7 +1833,7 @@ function editModal(
     agent.status === "active" ? "checked" : ""
   }>Ativo (agendado)</label>
     </div>
-    <button type="submit">Salvar alterações</button>
+    <button type="submit" class="button" style="width:100%;min-height:46px;font-size:14px;font-weight:600;margin-top:14px;background:#202226;color:#fff;border-radius:12px">Salvar alterações</button>
   </form>
 </div></div>`;
 }
@@ -1943,7 +1982,7 @@ export function renderSettingsTab(data: DashboardData): string {
         </details>
       </div>
 
-      <div style="margin-top:14px"><button type="submit">Salvar Configurações de IA</button></div>
+      <div style="margin-top:14px"><button type="submit" class="button button-sm">Salvar Configurações de IA</button></div>
     </form>
   </section>
 
@@ -1953,7 +1992,7 @@ export function renderSettingsTab(data: DashboardData): string {
       <input type="hidden" name="openrouter_api_key" value="${escapeHtml(s.openrouterApiKey)}">
       <input type="hidden" name="chat_model" value="${escapeHtml(s.chatModel)}">
       <div><label for="pexels_api_key">Chave da API Pexels (Opcional - Fotos Reais Grátis)</label><input id="pexels_api_key" name="pexels_api_key" placeholder="Copie sua chave em pexels.com/api" value="${escapeHtml(s.pexelsApiKey)}"><p class="field-help">Obtenha sua chave gratuita em <a href="https://www.pexels.com/pt-br/api/" target="_blank" rel="noopener">pexels.com/api</a> para usar fotos reais sem gastar créditos de IA.</p></div>
-      <div><button type="submit">Salvar Pexels</button></div>
+      <div><button type="submit" class="button button-sm">Salvar Pexels</button></div>
     </form>
   </section>
 
@@ -1982,7 +2021,7 @@ export function renderSettingsTab(data: DashboardData): string {
         <input id="cooldown_seconds" name="cooldown_seconds" type="number" min="0" max="300" value="${s.cooldownSeconds}">
         <p class="field-help">Pausa sequencial anti-429 entre agentes devidos (ideal para modelos free). 0 = desativado.</p>
       </div>
-      <div><button type="submit">Salvar limites e travas</button></div>
+      <div><button type="submit" class="button button-sm">Salvar limites e travas</button></div>
     </form>
   </section>
 
@@ -1992,7 +2031,7 @@ export function renderSettingsTab(data: DashboardData): string {
       <div><label for="blog-name">Nome do blog</label><input id="blog-name" name="name" required minlength="2" maxlength="60" placeholder="Ex.: Blog de economia"></div>
       <div><label for="blog-base-url">Domínio (base da API)</label><input id="blog-base-url" name="base_url" required placeholder="ex.: https://seu-site.com/api/cli"><p class="field-help">A API CLI é documentada em <code>CLI-API.md</code>.</p></div>
       <div><label for="blog-token">Token da API</label><input id="blog-token" name="token" required value="${escapeHtml("")}"><p class="field-help">Usado para autenticar, listar categorias e publicar artigos deste blog.</p></div>
-      <div><button type="submit">Cadastrar blog</button></div>
+      <div><button type="submit" class="button button-sm">Cadastrar blog</button></div>
     </form>
     <div class="divider"></div>
     ${blogCards(data.blogs, data.categoriesByBlog)}

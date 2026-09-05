@@ -5,6 +5,8 @@ export interface CompletionOptions {
   maxTokens?: number;
   temperature?: number;
   webSearch?: boolean;
+  subagent?: boolean;
+  advisor?: boolean;
 }
 
 export interface CompletionResult {
@@ -122,16 +124,28 @@ export class OpenRouterClient {
             { id: "response-healing" },
           ],
         };
+        const toolsList: any[] = [];
         if (opts.webSearch) {
-          payload.tools = [
-            {
-              type: "openrouter:web_search",
-              parameters: {
-                engine: "auto",
-                max_results: 5,
-              },
+          toolsList.push({
+            type: "openrouter:web_search",
+            parameters: {
+              engine: "auto",
+              max_results: 5,
             },
-          ];
+          });
+        }
+        if (opts.subagent) {
+          toolsList.push({
+            type: "openrouter:subagent",
+          });
+        }
+        if (opts.advisor) {
+          toolsList.push({
+            type: "openrouter:advisor",
+          });
+        }
+        if (toolsList.length > 0) {
+          payload.tools = toolsList;
         }
         const res = await fetch(CHAT_URL, {
           method: "POST",
