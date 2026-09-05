@@ -179,6 +179,10 @@ input[type=checkbox]{width:16px;min-height:16px;accent-color:var(--c-accent)}
 .status-active{background:var(--c-success-soft);color:var(--c-success)}.status-active::before{background:var(--c-success)}
 .status-paused{background:var(--c-bg);color:var(--c-text-muted)}.status-paused::before{background:var(--c-text-muted)}
 .status-running{background:var(--c-warning-soft);color:var(--c-warning)}.status-running::before{background:var(--c-warning)}
+button.status-pill{cursor:pointer;border:1px solid transparent;font:inherit;line-height:inherit}
+button.status-pill:hover{transform:scale(1.04);box-shadow:0 1px 4px rgba(0,0,0,.08);filter:brightness(0.96)}
+button.status-pill.status-error:hover{background:#fee2e2;border-color:#fca5a5}
+button.status-pill.status-success:hover{background:#dcfce7;border-color:#86efac}
 /* === Stats === */
 .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:10px;margin-bottom:18px}
 .stat{padding:16px 18px;border:1px solid var(--c-border);border-radius:var(--radius-lg);background:var(--c-surface);box-shadow:var(--shadow-xs);transition:all .2s ease;position:relative;overflow:hidden}
@@ -1024,10 +1028,10 @@ function agentProfileModal(agent: Agent, runs: Run[], blogs: Blog[]): string {
   const rows = agentRuns.length > 0
     ? agentRuns.map((r) => {
       const pill = r.status === "success"
-        ? '<span class="status-pill status-success">Sucesso</span>'
+        ? `<button type="button" class="status-pill status-success" onclick="openRunDetails(${r.id})" title="Clique para ver os logs e detalhes desta execução">Sucesso</button>`
         : r.status === "running"
-        ? '<span class="status-pill" style="background:#eff6ff;color:#1d4ed8;border-color:#bfdbfe"><span class="pulse-dot"></span> Gerando...</span>'
-        : '<span class="status-pill status-error">Erro</span>';
+        ? `<button type="button" class="status-pill" onclick="openRunDetails(${r.id})" style="background:#eff6ff;color:#1d4ed8;border-color:#bfdbfe" title="Clique para acompanhar esta execução em andamento"><span class="pulse-dot"></span> Gerando...</button>`
+        : `<button type="button" class="status-pill status-error" onclick="openRunDetails(${r.id})" title="Clique para ver o diagnóstico e motivo do erro">Erro</button>`;
       const postText = r.postSlug
         ? `${r.postSlug}${r.postId ? ` (#${r.postId})` : ""}`
         : r.title ?? "—";
@@ -1164,10 +1168,10 @@ function runsTable(runs: Run[], agents: Agent[] = []): string {
 
 function runRow(run: Run, agents: Agent[] = []): string {
   const pill = run.status === "success"
-    ? '<span class="status-pill status-success">Sucesso</span>'
+    ? `<button type="button" class="status-pill status-success" onclick="openRunDetails(${run.id})" title="Clique para ver os logs e detalhes desta execução">Sucesso</button>`
     : run.status === "running"
-    ? '<span class="status-pill" style="background:#eff6ff;color:#1d4ed8;border-color:#bfdbfe"><span class="pulse-dot"></span> Gerando...</span>'
-    : '<span class="status-pill status-error">Erro</span>';
+    ? `<button type="button" class="status-pill" onclick="openRunDetails(${run.id})" style="background:#eff6ff;color:#1d4ed8;border-color:#bfdbfe" title="Clique para acompanhar esta execução em andamento"><span class="pulse-dot"></span> Gerando...</button>`
+    : `<button type="button" class="status-pill status-error" onclick="openRunDetails(${run.id})" title="Clique para ver o diagnóstico e motivo do erro">Erro</button>`;
   const post = run.postSlug
     ? `${run.postSlug}${run.postId ? ` (#${run.postId})` : ""}`
     : run.title ?? "—";
@@ -1253,10 +1257,10 @@ function allRunsModal(runs: Run[], agents: Agent[] = []): string {
 
 function allRunsRow(run: Run, agents: Agent[] = []): string {
   const pill = run.status === "success"
-    ? '<span class="status-pill status-success">Sucesso</span>'
+    ? `<button type="button" class="status-pill status-success" onclick="openRunDetails(${run.id})" title="Clique para ver os logs e detalhes desta execução">Sucesso</button>`
     : run.status === "running"
-    ? '<span class="status-pill" style="background:#eff6ff;color:#1d4ed8;border-color:#bfdbfe"><span class="pulse-dot"></span> Gerando...</span>'
-    : '<span class="status-pill status-error">Erro</span>';
+    ? `<button type="button" class="status-pill" onclick="openRunDetails(${run.id})" style="background:#eff6ff;color:#1d4ed8;border-color:#bfdbfe" title="Clique para acompanhar esta execução em andamento"><span class="pulse-dot"></span> Gerando...</button>`
+    : `<button type="button" class="status-pill status-error" onclick="openRunDetails(${run.id})" title="Clique para ver o diagnóstico e motivo do erro">Erro</button>`;
   const post = run.postSlug
     ? `${run.postSlug}${run.postId ? ` (#${run.postId})` : ""}`
     : run.title ?? "—";
@@ -2592,9 +2596,11 @@ export function runDetailsModalJs(): string {
         // Diagnostic card for error
         var diagHtml = "";
         if (run.status === "error" || run.error) {
-          var errMsg = run.error || "Erro durante o processamento da requisição.";
+          var errMsg = run.error || "Execução interrompida sem mensagem de erro gravada.";
           var hint = "Verifique os parâmetros do agente e as chaves de API.";
-          if (errMsg.indexOf("401") !== -1 || errMsg.indexOf("Unauthorized") !== -1 || errMsg.indexOf("token") !== -1) {
+          if (!run.error) {
+            hint = "Esta execução foi iniciada antes da atualização do sistema de observabilidade ou foi suspensa pelo reinício da instância serverless do Deno Deploy antes de salvar o erro. O novo sistema agora captura e aguarda a execução completa.";
+          } else if (errMsg.indexOf("401") !== -1 || errMsg.indexOf("Unauthorized") !== -1 || errMsg.indexOf("token") !== -1) {
             hint = "Erro de autorização (401). Verifique se o Token da API do Blog está correto em Configurações > Blogs, ou se sua chave do OpenRouter é válida.";
           } else if (errMsg.indexOf("429") !== -1 || errMsg.indexOf("Rate limit") !== -1) {
             hint = "Limite de requisições excedido (429). Adicione chaves reservas do OpenRouter em Configurações > Multi-Chaves ou aumente o cooldown entre posts.";
