@@ -3024,10 +3024,10 @@ export function renderCreatePostTab(data: DashboardData): string {
         </div>
 
         <div class="sidebar-subtabs">
-          <button type="button" class="sidebar-subtab active" data-side="gen" title="Redator de Artigos com IA">Redator</button>
-          <button type="button" class="sidebar-subtab" data-side="seo" title="Otimizador de SEO e Metadados">SEO</button>
-          <button type="button" class="sidebar-subtab" data-side="pexels" title="Banco de Fotos Gratuitas Pexels">Pexels</button>
-          <button type="button" class="sidebar-subtab" data-side="img" title="Gerador de Capa com IA">Capa IA</button>
+          <button type="button" class="sidebar-subtab active" data-side="gen" onclick="switchSidebarTab('gen')" title="Redator de Artigos com IA">Redator</button>
+          <button type="button" class="sidebar-subtab" data-side="seo" onclick="switchSidebarTab('seo')" title="Otimizador de SEO e Metadados">SEO</button>
+          <button type="button" class="sidebar-subtab" data-side="pexels" onclick="switchSidebarTab('pexels')" title="Banco de Fotos Gratuitas Pexels">Pexels</button>
+          <button type="button" class="sidebar-subtab" data-side="img" onclick="switchSidebarTab('img')" title="Gerador de Capa com IA">Capa IA</button>
         </div>
 
         <!-- Tab 1: Full Article Generator -->
@@ -3238,7 +3238,7 @@ export function renderCreatePostTab(data: DashboardData): string {
     if (!art) return;
     var genPrompt = document.getElementById("gen-prompt");
     if (genPrompt) {
-      genPrompt.value = "Escreva um artigo jornalístico completo, analítico e de alto impacto sobre a notícia de última hora: \"" + art.title + "\". Fonte: " + art.source + (art.snippet ? " (" + art.snippet + ")" : "") + ". Baseie-se nos fatos reais e desenvolva insights práticos para o público.";
+      genPrompt.value = "Escreva um artigo jornalístico completo, analítico e de alto impacto sobre a notícia de última hora: '" + art.title + "'. Fonte: " + art.source + (art.snippet ? " (" + art.snippet + ")" : "") + ". Baseie-se nos fatos reais e desenvolva insights práticos para o público.";
     }
     if (titleInput) {
       titleInput.value = art.title;
@@ -3421,25 +3421,28 @@ export function renderCreatePostTab(data: DashboardData): string {
   }
 
   // --- Sidebar Subtabs ---
-  var subtabs = document.querySelectorAll(".sidebar-subtab");
-  var panels = {
-    gen: document.getElementById("side-panel-gen"),
-    seo: document.getElementById("side-panel-seo"),
-    pexels: document.getElementById("side-panel-pexels"),
-    img: document.getElementById("side-panel-img")
-  };
-
   function switchSidebarTab(tabKey){
-    subtabs.forEach(function(st){
+    var currentSubtabs = document.querySelectorAll(".sidebar-subtab");
+    currentSubtabs.forEach(function(st){
       st.classList.toggle("active", st.getAttribute("data-side") === tabKey);
     });
-    Object.keys(panels).forEach(function(k){
-      if (panels[k]) panels[k].style.display = (k === tabKey ? "block" : "none");
+    var currentPanels = {
+      gen: document.getElementById("side-panel-gen"),
+      seo: document.getElementById("side-panel-seo"),
+      pexels: document.getElementById("side-panel-pexels"),
+      img: document.getElementById("side-panel-img")
+    };
+    Object.keys(currentPanels).forEach(function(k){
+      if (currentPanels[k]) {
+        currentPanels[k].style.display = (k === tabKey ? "block" : "none");
+      }
     });
   }
+  window.switchSidebarTab = switchSidebarTab;
 
-  subtabs.forEach(function(st){
-    st.addEventListener("click", function(){
+  document.querySelectorAll(".sidebar-subtab").forEach(function(st){
+    st.addEventListener("click", function(e){
+      e.preventDefault();
       switchSidebarTab(st.getAttribute("data-side"));
     });
   });
