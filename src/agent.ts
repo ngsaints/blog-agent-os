@@ -15,7 +15,75 @@ export interface Article {
   tags?: string;
 }
 
-export function createAgentTools(blog?: BlogApiClient, pexels?: PexelsClient) {
+export interface NewsItem {
+  title: string;
+  source: string;
+  pubDate: string;
+  link?: string;
+}
+
+export type RunLogCallback = {
+  info: (msg: string, details?: string) => void;
+  warn: (msg: string, details?: string) => void;
+  step: (msg: string) => void;
+};
+
+export async function fetchRecentNews(query: string, maxItems = 5): Promise<NewsItem[]> {
+  try {
+    const cleanQuery = query
+      .replace(/[\n\r]+/g, " ")
+      .replace(/[^\p{L}\p{N}\s-]/gu, " ")
+      .trim()
+      .split(/\s+/)
+      .slice(0, 6)
+      .join(" ");
+
+    const encoded = encodeURIComponent(cleanQuery || query.trim());
+    const url = `https://news.google.com/rss/search?q=${encoded}&hl=pt-BR&gl=BR&ceid=BR:pt-419`;
+    const res = await fetch(url, {
+      headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" },
+      signal: AbortSignal.timeout(6000),
+    });
+    if (!res.ok) return [];
+    const xml = await res.text();
+    const items: NewsItem[] = [];
+    const regex = /<item>([\s\S]*?)<\/item>/g;
+    let match;
+    while ((match = regex.exec(xml)) !== null && items.length < maxItems) {
+      const block = match[1];
+      const rawTitle = block.match(/<title>(.*?)<\/title>/)?.[1] || "";
+      const title = rawTitle
+        .replace(/&amp;/g, "&")
+        .replace(/&lt;/g, "<")
+        .replace(/&gt;/g, ">")
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'")
+        .trim();
+      const rawSource = block.match(/<source[^>]*>(.*?)<\/source>/)?.[1] || "";
+      const source = rawSource
+        .replace(/&amp;/g, "&")
+        .replace(/&lt;/g, "<")
+        .replace(/&gt;/g, ">")
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'")
+        .trim() || "Imprensa";
+      const pubDate = block.match(/<pubDate>(.*?)<\/pubDate>/)?.[1] || "";
+      const link = block.match(/<link>(.*?)<\/link>/)?.[1] || "";
+      if (title) {
+        items.push({ title, source, pubDate, link });
+      }
+    }
+    return items;
+  } catch {
+    return [];
+  }
+}
+
+export function createAgentTools(
+  blog?: BlogApiClient,
+  pexels?: PexelsClient,
+  runLog?: RunLogCallback,
+) {
   const searchWebTool = tool({
     name: "search_web",
     description: "Pesquisa na internet por notícias recentes, fatos, dados e referências sobre qualquer assunto",
@@ -36,7 +104,22 @@ export function createAgentTools(blog?: BlogApiClient, pexels?: PexelsClient) {
       temperature: () => 0.35,
     },
     execute: async ({ query }) => {
+      runLog?.info(`Pesquisando na web para: "${query}"...`);
       try {
+        const news = await fetchRecentNews(query, 5);
+        if (news.length > 0) {
+          runLog?.info(
+            `Busca na web retornou ${news.length} notícias recentes`,
+            news.map((n) => `• [${n.source}] ${n.title} (${n.pubDate})`).join("\n"),
+          );
+          return {
+            results: news.map((n) => ({
+              title: `[${n.source}] ${n.title}`,
+              snippet: `${n.title}. Publicado em: ${n.pubDate} por ${n.source}. Link: ${n.link || ""}`,
+            })),
+          };
+        }
+
         const encoded = encodeURIComponent(query);
         const res = await fetch(`https://html.duckduckgo.com/html/?q=${encoded}`, {
           headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" },
@@ -56,10 +139,13 @@ export function createAgentTools(blog?: BlogApiClient, pexels?: PexelsClient) {
           }
         }
         if (results.length === 0) {
+          runLog?.info(`Nenhum resultado web específico encontrado para: "${query}".`);
           return { results: [{ title: query, snippet: `Resultados sobre ${query}.` }] };
         }
+        runLog?.info(`Busca retornou ${results.length} referências web.`);
         return { results };
       } catch (err) {
+        runLog?.warn(`Falha na busca web: ${err}`);
         return { results: [{ title: query, snippet: `Não foi possível carregar dados da web: ${err}` }] };
       }
     },
@@ -83,6 +169,7 @@ export function createAgentTools(blog?: BlogApiClient, pexels?: PexelsClient) {
       temperature: () => 0.35,
     },
     execute: async ({ url }) => {
+      runLog?.info(`Lendo conteúdo da página web: ${url}`);
       try {
         const res = await fetch(url, {
           headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" },
@@ -95,8 +182,10 @@ export function createAgentTools(blog?: BlogApiClient, pexels?: PexelsClient) {
           .replace(/\s+/g, " ")
           .trim()
           .slice(0, 3000);
+        runLog?.info(`Conteúdo da página lido com sucesso (${cleanText.length} caracteres extraídos).`);
         return { content: cleanText, success: true };
       } catch (err) {
+        runLog?.warn(`Falha ao ler página web: ${err}`);
         return { content: `Falha ao ler URL: ${err}`, success: false };
       }
     },
@@ -119,13 +208,16 @@ export function createAgentTools(blog?: BlogApiClient, pexels?: PexelsClient) {
       temperature: () => 0.4,
     },
     execute: async ({ limit }) => {
+      runLog?.info(`Consultando histórico de artigos anteriores do blog (${limit || 5} posts)...`);
       if (!blog) return { posts: [] };
       try {
         const res = await blog.listPosts({ limit: Math.min(15, limit || 5) });
+        runLog?.info(`Histórico consultado com sucesso (${res.posts.length} posts recentes retornados).`);
         return {
           posts: res.posts.map((p) => ({ id: p.id, title: p.title, slug: p.slug })),
         };
-      } catch {
+      } catch (err) {
+        runLog?.warn(`Erro ao consultar histórico do blog: ${err}`);
         return { posts: [] };
       }
     },
@@ -154,9 +246,11 @@ export function createAgentTools(blog?: BlogApiClient, pexels?: PexelsClient) {
       temperature: () => 0.35,
     },
     execute: async ({ query, orientation }) => {
+      runLog?.info(`Buscando fotos no Pexels para: "${query}"...`);
       if (!pexels || !pexels.isConfigured()) return { photos: [] };
       try {
         const photos = await pexels.searchPhotos(query, orientation, 5);
+        runLog?.info(`Pexels retornou ${photos.length} fotos correspondentes.`);
         return {
           photos: photos.map((p) => ({
             id: p.id,
@@ -165,7 +259,8 @@ export function createAgentTools(blog?: BlogApiClient, pexels?: PexelsClient) {
             previewUrl: p.src.medium,
           })),
         };
-      } catch {
+      } catch (err) {
+        runLog?.warn(`Erro na busca Pexels: ${err}`);
         return { photos: [] };
       }
     },
@@ -181,10 +276,16 @@ Regras obrigatórias:
 - Mínimo de 800 palavras, com introdução atraente, subtítulos semânticos (h2, h3) e conclusão prática.
 - Mantenha-se 100% fiel e estrito ao tema solicitado. NÃO misture assuntos de outros nichos (como moda, fitness ou outros artigos antigos do blog), a menos que explicitamente pedido no foco editorial.
 - Conteúdo em HTML semântico: h2, h3, p, ul, li, strong, a.
+- Veracidade e atualidade: Baseie-se rigorosamente em acontecimentos e notícias reais do período atual. É expressamente proibido inventar nomes fictícios de lançamentos, produtos ou acontecimentos.
 - Responda APENAS com um objeto JSON válido, sem markdown:
 {"title":"Título do artigo","excerpt":"Resumo de até 160 caracteres","content_html":"<p>HTML do artigo completo</p>","slug":"slug-otimizado-para-url","tags":"tag1, tag2"}`;
 
-export function buildUserPrompt(agent: Agent, topPosts: PostItem[] = [], task?: string): string {
+export function buildUserPrompt(
+  agent: Agent,
+  topPosts: PostItem[] = [],
+  task?: string,
+  recentNews: NewsItem[] = [],
+): string {
   const date = new Date().toLocaleDateString("pt-BR", {
     day: "2-digit",
     month: "long",
@@ -200,6 +301,14 @@ export function buildUserPrompt(agent: Agent, topPosts: PostItem[] = [], task?: 
   }
   if (customInstructions) {
     themeSection += `\n\nINSTRUÇÕES EXTRAS E DIRETRIZES ESPECÍFICAS:\n${customInstructions}`;
+  }
+
+  let newsContext = "";
+  if (recentNews.length > 0) {
+    const list = recentNews
+      .map((n, i) => `${i + 1}. "${n.title}" — Fonte: ${n.source} (${n.pubDate})`)
+      .join("\n");
+    newsContext = `\nNOTÍCIAS E ACONTECIMENTOS REAIS DE HOJE (ÚLTIMAS HORAS / DIAS):\n${list}\n\nDIRETRIZ DE VERACIDADE E ATUALIDADE:\n- Baseie o artigo nos fatos, novidades e lançamentos REAIS listados acima ou utilize-os como gancho principal da publicação.\n- Se o agente usar a ferramenta "search_web", busque aprofundar os detalhes desses acontecimentos.\n- É expressamente proibido inventar nomes de produtos ou acontecimentos que não existam na realidade.\n`;
   }
 
   const pinterestNote = agent.pinterestEnabled
@@ -223,6 +332,7 @@ export function buildUserPrompt(agent: Agent, topPosts: PostItem[] = [], task?: 
 Publicação para a categoria "${categoryName(agent.categoryId)}".
 
 ${themeSection}
+${newsContext}
 ${topPerformanceContext}
 ${pinterestNote}
 
@@ -569,7 +679,7 @@ Gere o JSON com o "image_prompt" rico e detalhado em inglês (incorporando as di
       try {
         runLog.step(`Executando Criador Visual com Agent SDK (Tools & Web)...`);
         const agentSdk = new AgentSdkOpenRouter({ apiKey: or.getApiKey() });
-        const tools = createAgentTools(blog, pexels);
+        const tools = createAgentTools(blog, pexels, runLog);
         const result = agentSdk.callModel({
           model: agent.model,
           instructions: (ctx) =>
@@ -739,6 +849,25 @@ export async function runAgentOnce(
       runLog.warn(`Não foi possível carregar histórico do blog: ${topErr instanceof Error ? topErr.message : topErr}`);
     }
 
+    let recentNews: NewsItem[] = [];
+    if (agent.toolsEnabled) {
+      try {
+        runLog.step("Pesquisando notícias de última hora para embasar a pauta...");
+        const newsQuery = task?.trim() || agent.description?.trim() || "tecnologia inovacao inteligencia artificial";
+        recentNews = await fetchRecentNews(newsQuery, 5);
+        if (recentNews.length > 0) {
+          runLog.info(
+            `Notícias quentes em tempo real obtidas (${recentNews.length} fontes)`,
+            recentNews.map((n) => `• [${n.source}] ${n.title} (${n.pubDate})`).join("\n"),
+          );
+        } else {
+          runLog.info("Nenhuma notícia em tempo real encontrada no feed direto; o agente usará busca autônoma se necessário.");
+        }
+      } catch (newsErr) {
+        runLog.warn(`Feed de notícias em tempo real indisponível: ${newsErr instanceof Error ? newsErr.message : newsErr}`);
+      }
+    }
+
     let article: Article;
     let totalTokensIn = 0;
     let totalTokensOut = 0;
@@ -749,14 +878,14 @@ export async function runAgentOnce(
       try {
         runLog.step(`Executando Redator com Agent SDK (Tools & Web Search ativas)...`);
         const agentSdk = new AgentSdkOpenRouter({ apiKey: or.getApiKey() });
-        const tools = createAgentTools(blog, pexels);
-        const userPrompt = buildUserPrompt(agent, topPosts, task);
+        const tools = createAgentTools(blog, pexels, runLog);
+        const userPrompt = buildUserPrompt(agent, topPosts, task, recentNews);
         const result = agentSdk.callModel({
           model: agent.model,
           instructions: (ctx) =>
             ctx.numberOfTurns > 1
-              ? `${SYSTEM_PROMPT}\n\nIMPORTANTE: Agora que você já consultou as ferramentas, sintetize as informações coletadas e responda EXCLUSIVAMENTE com o objeto JSON final do artigo, sem qualquer texto ou markdown externo.`
-              : SYSTEM_PROMPT,
+              ? `${SYSTEM_PROMPT}\n\nIMPORTANTE: Agora que você já consultou as ferramentas e coletou os dados da web, sintetize as informações coletadas e responda EXCLUSIVAMENTE com o objeto JSON final do artigo, sem qualquer texto ou markdown externo.`
+              : `${SYSTEM_PROMPT}\n\nDIRETRIZ DE EXECUÇÃO: Você tem a ferramenta de pesquisa "search_web" disponível. Se precisar de mais detalhes ou notícias atualizadas sobre o tema, utilize obrigatoriamente a ferramenta search_web antes de escrever.`,
           input: userPrompt,
           tools,
           temperature: (ctx) => (ctx.numberOfTurns > 1 ? 0.35 : 0.85),
@@ -774,7 +903,7 @@ export async function runAgentOnce(
         const completion = await or.chat({
           model: agent.model,
           system: SYSTEM_PROMPT,
-          user: buildUserPrompt(agent, topPosts, task),
+          user: buildUserPrompt(agent, topPosts, task, recentNews),
           maxTokens: agent.maxTokens,
           temperature: 0.85,
         }, "article_generation");
@@ -789,7 +918,7 @@ export async function runAgentOnce(
       const completion = await or.chat({
         model: agent.model,
         system: SYSTEM_PROMPT,
-        user: buildUserPrompt(agent, topPosts, task),
+        user: buildUserPrompt(agent, topPosts, task, recentNews),
         maxTokens: agent.maxTokens,
         temperature: 0.85,
       }, "article_generation");
