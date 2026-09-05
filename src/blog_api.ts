@@ -1,3 +1,5 @@
+import { detectImageMimeType } from "./openrouter.ts";
+
 export interface BlogPostInput {
   title: string;
   content: string;
@@ -277,12 +279,18 @@ export class BlogApiClient {
   }
 
   async uploadImage(bytes: Uint8Array, filename: string, type: string, folder = "blog"): Promise<string> {
+    const detected = detectImageMimeType(bytes);
+    const realType = detected.mime;
+    const dotIdx = filename.lastIndexOf(".");
+    const baseName = dotIdx !== -1 ? filename.slice(0, dotIdx) : filename;
+    const realFilename = `${baseName}.${detected.ext}`;
+
     const form = new FormData();
     const buffer = bytes.buffer.slice(
       bytes.byteOffset,
       bytes.byteOffset + bytes.byteLength,
     ) as ArrayBuffer;
-    form.append("file", new Blob([buffer], { type }), filename);
+    form.append("file", new Blob([buffer], { type: realType }), realFilename);
     form.append("folder", folder);
     const json = await this.request("/upload", { method: "POST", body: form });
     if (typeof json.url !== "string" || !json.url) {

@@ -54,6 +54,26 @@ async function readJson(res: Response): Promise<any> {
   return res.json();
 }
 
+export function detectImageMimeType(bytes: Uint8Array): { mime: string; ext: string } {
+  if (bytes.length >= 3 && bytes[0] === 0xFF && bytes[1] === 0xD8 && bytes[2] === 0xFF) {
+    return { mime: "image/jpeg", ext: "jpg" };
+  }
+  if (bytes.length >= 8 && bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4E && bytes[3] === 0x47) {
+    return { mime: "image/png", ext: "png" };
+  }
+  if (
+    bytes.length >= 12 &&
+    bytes[0] === 0x52 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x46 &&
+    bytes[8] === 0x57 && bytes[9] === 0x45 && bytes[10] === 0x42 && bytes[11] === 0x50
+  ) {
+    return { mime: "image/webp", ext: "webp" };
+  }
+  if (bytes.length >= 6 && bytes[0] === 0x47 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x38) {
+    return { mime: "image/gif", ext: "gif" };
+  }
+  return { mime: "image/jpeg", ext: "jpg" };
+}
+
 import type { AiProviderPool, AiTaskType } from "./ai_pool.ts";
 
 export class OpenRouterClient {
@@ -237,7 +257,16 @@ export class OpenRouterClient {
         : prompt,
       n: 1,
     };
-    if (aspectRatio === "9:16") {
+    if (model.includes("seedream")) {
+      // ByteDance Seedream exige resolução superior (mínimo de 3.686.400 pixels)
+      if (aspectRatio === "9:16") {
+        bodyPayload.size = "1440x2560";
+      } else if (aspectRatio === "16:9") {
+        bodyPayload.size = "2560x1440";
+      } else {
+        bodyPayload.size = "2048x2048";
+      }
+    } else if (aspectRatio === "9:16") {
       bodyPayload.size = "768x1344";
     } else if (aspectRatio === "16:9") {
       bodyPayload.size = "1344x768";
@@ -265,6 +294,44 @@ export class OpenRouterClient {
         });
         if (!res.ok) {
           const body = await res.text();
+          // Fallback se o modelo exigir resolução diferente ou omitir size
+          if (res.status === 400 && bodyPayload.size && (body.includes("size") || body.includes("pixels") || body.includes("output pixels"))) {
+            if (body.includes("2048x2048")) {
+              bodyPayload.size = "2048x2048";
+            } else {
+              delete bodyPayload.size;
+            }
+            const retryRes = await fetch(IMAGES_URL, {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${key}`,
+                "X-OpenRouter-Title": this.appTitle,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify(bodyPayload),
+            });
+            if (retryRes.ok) {
+              const retryData = await readJson(retryRes);
+              const retryItem = retryData.data?.[0] ?? retryData.images?.[0];
+              if (retryItem) {
+                const pricing = await this.getPricing(model);
+                const cost = pricing?.image && pricing.image > 0 ? pricing.image : 0.03;
+                if (typeof retryItem.url === "string" && retryItem.url) {
+                  const imgRes = await fetch(retryItem.url);
+                  if (imgRes.ok) {
+                    const bytes = new Uint8Array(await imgRes.arrayBuffer());
+                    const detected = detectImageMimeType(bytes);
+                    return { bytes, type: detected.mime, cost };
+                  }
+                }
+                if (typeof retryItem.b64_json === "string" && retryItem.b64_json) {
+                  const bytes = base64ToBytes(retryItem.b64_json);
+                  const detected = detectImageMimeType(bytes);
+                  return { bytes, type: detected.mime, cost };
+                }
+              }
+            }
+          }
           throw new Error(`OpenRouter imagem ${res.status}: ${body.slice(0, 300)}`);
         }
         const data = await readJson(res);
@@ -277,11 +344,13 @@ export class OpenRouterClient {
           const imgRes = await fetch(item.url);
           if (!imgRes.ok) throw new Error(`Falha ao baixar imagem: ${imgRes.status}`);
           const bytes = new Uint8Array(await imgRes.arrayBuffer());
-          return { bytes, type: imgRes.headers.get("content-type") ?? "image/png", cost };
+          const detected = detectImageMimeType(bytes);
+          return { bytes, type: detected.mime, cost };
         }
         if (typeof item.b64_json === "string" && item.b64_json) {
           const bytes = base64ToBytes(item.b64_json);
-          return { bytes, type: item.content_type ?? "image/png", cost };
+          const detected = detectImageMimeType(bytes);
+          return { bytes, type: detected.mime, cost };
         }
         throw new Error("OpenRouter: formato de imagem não reconhecido");
       } catch (err) {
