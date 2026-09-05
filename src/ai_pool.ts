@@ -243,6 +243,12 @@ export class AiProviderPool {
       max_tokens: opts.maxTokens ?? 8192,
     };
 
+    if (config.provider === "openrouter") {
+      payload.plugins = [
+        { id: "response-healing" },
+      ];
+    }
+
     if (opts.webSearch && config.provider === "openrouter") {
       payload.tools = [
         {
@@ -263,8 +269,9 @@ export class AiProviderPool {
 
     if (!res.ok) {
       const body = await res.text().catch(() => "");
-      if (res.status === 400 && opts.webSearch && payload.tools) {
+      if (res.status === 400 && (payload.tools || payload.plugins)) {
         delete payload.tools;
+        delete payload.plugins;
         const retryRes = await fetch(endpoint, {
           method: "POST",
           headers,

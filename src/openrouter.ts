@@ -118,6 +118,9 @@ export class OpenRouterClient {
             ...(opts.system ? [{ role: "system", content: opts.system }] : []),
             { role: "user", content: opts.user },
           ],
+          plugins: [
+            { id: "response-healing" },
+          ],
         };
         if (opts.webSearch) {
           payload.tools = [
@@ -141,9 +144,10 @@ export class OpenRouterClient {
         });
         if (!res.ok) {
           const body = await res.text();
-          // Fallback se o modelo ou provedor recusar server tools (status 400)
-          if (res.status === 400 && opts.webSearch && payload.tools) {
+          // Fallback se o modelo ou provedor recusar server tools ou plugins (status 400)
+          if (res.status === 400 && (payload.tools || payload.plugins)) {
             delete payload.tools;
+            delete payload.plugins;
             const retryRes = await fetch(CHAT_URL, {
               method: "POST",
               headers: {
