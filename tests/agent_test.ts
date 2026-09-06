@@ -1,6 +1,12 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { buildUserPrompt, categoryName, parseArticleJson } from "../src/agent.ts";
+import {
+  buildUserPrompt,
+  categoryName,
+  countNewsOccurrencesInArticles,
+  isSameNewsTopic,
+  parseArticleJson,
+} from "../src/agent.ts";
 import { createSession, parseCookies, SESSION_COOKIE, verifySession } from "../src/auth.ts";
 
 const LONG_CONTENT = "<p>" +
@@ -124,6 +130,79 @@ test("buildUserPrompt: inclui retroalimentação de posts mais vistos", () => {
   assert.ok(prompt.includes("Top 5 Modelos Gratuitos"));
   assert.ok(prompt.includes("1.450 visualizações"));
   assert.ok(prompt.includes("DIRETRIZ EDITORIAL DE ALTA PERFORMANCE"));
+});
+
+test("buildUserPrompt: inclui histórico recente de artigos e diretriz de não-repetição", () => {
+  const agent = {
+    id: 1,
+    name: "Agente Notícias",
+    description: "Foco em Tecnologia",
+    model: "test/model",
+    imageModel: "",
+    imageSourceMode: "ai_only" as const,
+    toolsEnabled: false,
+    role: "writer" as const,
+    reviewerId: null,
+    avatar: "bot",
+    imageAspectRatio: "16:9" as const,
+    dailyPostLimit: 0,
+    blogId: 1,
+    categoryId: 1,
+    publishToBlog: true,
+    pinterestEnabled: false,
+    imageGen: false,
+    scheduleMinutes: 720,
+    maxTokens: 8192,
+    prompt: "Notícias recentes",
+    status: "active" as const,
+    postCount: 0,
+    lastRunAt: null,
+    lastError: null,
+    createdAt: new Date().toISOString(),
+  };
+
+  const recentArticles = [
+    { title: "Romi-Isetta: 70 Anos do Primeiro Carro Fabricado no Brasil", slug: "romi-isetta-70-anos" },
+    { title: "Como Ganhar Dinheiro no TikTok em 2026 com Creator Rewards", slug: "tiktok-2026" },
+  ];
+
+  const prompt = buildUserPrompt(agent, [], undefined, [], recentArticles);
+  assert.ok(prompt.includes("ÚLTIMOS ARTIGOS JÁ PUBLICADOS RECENTEMENTE NO BLOG"));
+  assert.ok(prompt.includes("Romi-Isetta: 70 Anos do Primeiro Carro Fabricado no Brasil"));
+  assert.ok(prompt.includes("Como Ganhar Dinheiro no TikTok em 2026 com Creator Rewards"));
+  assert.ok(prompt.includes("DIRETRIZ DE INEDITISMO E NÃO-REPETIÇÃO"));
+  assert.ok(prompt.includes("limite máximo de 2 abordagens"));
+});
+
+test("isSameNewsTopic: identifica notícias do mesmo tema e diferencia temas distintos", () => {
+  const newsRomi = "Em 1956, a Romi-Isetta estreava como o primeiro carro fabricado no Brasil. Setenta anos depois cidade celebra o ícone.";
+  const articleRomi1 = "Romi-Isetta: 70 Anos do Primeiro Carro Fabricado no Brasil";
+  const articleRomi2 = "História da Romi-Isetta e sua celebração histórica";
+  const articleOutro = "Como Investir em Inteligência Artificial para Pequenos Negócios";
+
+  assert.equal(isSameNewsTopic(newsRomi, articleRomi1), true);
+  assert.equal(isSameNewsTopic(newsRomi, articleRomi2), true);
+  assert.equal(isSameNewsTopic(newsRomi, articleOutro), false);
+
+  const newsTiktok = "Novas regras do TikTok Creator Rewards para criadores em 2026";
+  const articleTiktok = "Como Ganhar Dinheiro no TikTok em 2026: Guia do Creator Rewards";
+  assert.equal(isSameNewsTopic(newsTiktok, articleTiktok), true);
+});
+
+test("countNewsOccurrencesInArticles: conta corretamente ocorrências e bloqueia limite 2x", () => {
+  const news = "Em 1956, a Romi-Isetta estreava como o primeiro carro fabricado no Brasil.";
+  const articles0: string[] = ["Como Fazer Gestão Financeira", "Novos Modelos de IA"];
+  const articles1: string[] = ["Romi-Isetta: 70 Anos do Primeiro Carro Fabricado no Brasil", "Outro Artigo Qualquer"];
+  const articles2: string[] = [
+    "Romi-Isetta: 70 Anos do Primeiro Carro Fabricado no Brasil",
+    "A História Completa da Romi-Isetta no Brasil",
+    "Outro Post Desvinculado",
+  ];
+
+  assert.equal(countNewsOccurrencesInArticles(news, articles0), 0);
+  assert.equal(countNewsOccurrencesInArticles(news, articles1), 1);
+  assert.equal(countNewsOccurrencesInArticles(news, articles2), 2);
+  assert.ok(countNewsOccurrencesInArticles(news, articles2) >= 2);
 });
 
 test("categoryName: mapa conhecido e fallback", () => {

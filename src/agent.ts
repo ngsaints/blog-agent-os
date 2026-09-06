@@ -278,14 +278,90 @@ Regras obrigatórias:
 - Mantenha-se 100% fiel e estrito ao tema solicitado. NÃO misture assuntos de outros nichos (como moda, fitness ou outros artigos antigos do blog), a menos que explicitamente pedido no foco editorial.
 - Conteúdo em HTML semântico: h2, h3, p, ul, li, strong, a.
 - Veracidade e atualidade: Baseie-se rigorosamente em acontecimentos e notícias reais do período atual. É expressamente proibido inventar nomes fictícios de lançamentos, produtos ou acontecimentos.
+- Ineditismo e não-repetição: O blog não pode repetir a mesma notícia ou pauta mais de 2 vezes. Se uma notícia já foi abordada anteriormente, escolha outra notícia ou um ângulo inédito.
 - Responda APENAS com um objeto JSON válido, sem markdown:
 {"title":"Título do artigo","excerpt":"Resumo de até 160 caracteres","content_html":"<p>HTML do artigo completo</p>","slug":"slug-otimizado-para-url","tags":"tag1, tag2"}`;
+
+export function extractCleanKeywords(text: string): string[] {
+  const stopwords = new Set([
+    "de", "da", "do", "das", "dos", "em", "no", "na", "nos", "nas",
+    "um", "uma", "uns", "umas", "para", "por", "com", "sem", "sob",
+    "que", "como", "mais", "menos", "mas", "bem", "nao",
+    "seus", "suas", "seu", "sua", "meu", "minha", "nosso", "nossa",
+    "este", "esta", "estes", "estas", "esse", "essa", "esses", "essas",
+    "isso", "isto", "aquele", "aquela", "aqueles", "aquelas", "aquilo",
+    "pelo", "pela", "pelos", "pelas", "num", "numa", "nuns", "numas",
+    "aos", "as", "ao", "a", "o", "os", "e", "ou",
+    "qual", "quais", "quando", "quem", "onde", "porque", "por que",
+    "muito", "muitos", "muita", "muitas", "pouco", "poucos", "pouca", "poucas",
+    "cada", "tudo", "nada", "todo", "toda", "todos", "todas", "outro", "outra", "outros", "outras",
+    "sobre", "entre", "ate", "desde", "apos", "durante",
+    "artigo", "noticia", "guia", "post", "blog", "dicas", "melhor", "melhores"
+  ]);
+
+  const normalized = text
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^\w\s-]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  return normalized
+    .split(/\s+/)
+    .map((w) => w.trim())
+    .filter((w) => w.length >= 3 && !stopwords.has(w));
+}
+
+export function isSameNewsTopic(newsTitle: string, articleTitle: string): boolean {
+  const newsWords = extractCleanKeywords(newsTitle);
+  const articleWords = extractCleanKeywords(articleTitle);
+
+  if (newsWords.length === 0 || articleWords.length === 0) return false;
+
+  // 1. Termos compostos ou altamente específicos com hífen, dígitos ou nomes longos (ex: "romi-isetta", "gpt-4", "iphone-16")
+  const articleSet = new Set(articleWords);
+  const common = newsWords.filter((w) => articleSet.has(w));
+  const hasDistinctEntity = common.some((w) => (w.includes("-") && w.length >= 5) || (/\d/.test(w) && w.length >= 4) || w.length >= 10);
+  if (hasDistinctEntity) return true;
+
+  // 2. Coincidência por raiz de palavra (stemming leve para português)
+  const stem = (w: string) => (w.length >= 6 ? w.slice(0, 5) : w);
+  const articleStems = new Set(articleWords.map(stem));
+  const stemMatches = new Set(newsWords.map(stem).filter((s) => articleStems.has(s)));
+
+  const minLen = Math.min(newsWords.length, articleWords.length);
+  const stemRatio = stemMatches.size / minLen;
+
+  if (common.length >= 4 || stemMatches.size >= 4) return true;
+  if (common.length >= 3 && common.length / minLen >= 0.35) return true;
+  if (stemMatches.size >= 3 && stemRatio >= 0.35) return true;
+  if (stemMatches.size >= 2 && (common.some((w) => w.length >= 7) || stemRatio >= 0.45)) {
+    return true;
+  }
+
+  return false;
+}
+
+export function countNewsOccurrencesInArticles(
+  newsTitle: string,
+  articleTitles: string[],
+): number {
+  let count = 0;
+  for (const artTitle of articleTitles) {
+    if (isSameNewsTopic(newsTitle, artTitle)) {
+      count++;
+    }
+  }
+  return count;
+}
 
 export function buildUserPrompt(
   agent: Agent,
   topPosts: PostItem[] = [],
   task?: string,
   recentNews: NewsItem[] = [],
+  recentArticles: Array<{ title: string; slug?: string } | string> = [],
 ): string {
   const date = new Date().toLocaleDateString("pt-BR", {
     day: "2-digit",
@@ -309,7 +385,19 @@ export function buildUserPrompt(
     const list = recentNews
       .map((n, i) => `${i + 1}. "${n.title}" — Fonte: ${n.source} (${n.pubDate})`)
       .join("\n");
-    newsContext = `\nNOTÍCIAS E ACONTECIMENTOS REAIS DE HOJE (ÚLTIMAS HORAS / DIAS):\n${list}\n\nDIRETRIZ DE VERACIDADE E ATUALIDADE:\n- Baseie o artigo nos fatos, novidades e lançamentos REAIS listados acima ou utilize-os como gancho principal da publicação.\n- Se o agente usar a ferramenta "search_web", busque aprofundar os detalhes desses acontecimentos.\n- É expressamente proibido inventar nomes de produtos ou acontecimentos que não existam na realidade.\n`;
+    newsContext = `\nNOTÍCIAS E ACONTECIMENTOS REAIS DE HOJE (ÚLTIMAS HORAS / DIAS - SELECIONADAS DO RADAR):\n${list}\n\nDIRETRIZ DE VERACIDADE E ATUALIDADE:\n- Baseie o artigo nos fatos, novidades e lançamentos REAIS listados acima ou utilize-os como gancho principal da publicação.\n- Se o agente usar a ferramenta "search_web", busque aprofundar os detalhes desses acontecimentos.\n- É expressamente proibido inventar nomes de produtos ou acontecimentos que não existam na realidade.\n`;
+  }
+
+  let recentArticlesContext = "";
+  if (recentArticles.length > 0) {
+    const list = recentArticles
+      .slice(0, 10)
+      .map((a, i) => {
+        const t = typeof a === "string" ? a : a.title;
+        return `${i + 1}. "${t}"`;
+      })
+      .join("\n");
+    recentArticlesContext = `\nÚLTIMOS ARTIGOS JÁ PUBLICADOS RECENTEMENTE NO BLOG (HISTÓRICO RECENTE):\n${list}\n\nDIRETRIZ DE INEDITISMO E NÃO-REPETIÇÃO:\n- Os artigos listados acima foram publicados recentemente no blog.\n- É REGRA MANDATÓRIA: O agente NÃO pode repetir a mesma notícia ou pauta que já tenha sido coberta nos artigos recentes acima (limite máximo de 2 abordagens de uma mesma notícia no blog).\n- Se um tema ou notícia do radar já foi abordado anteriormente, você DEVE escolher outra pauta do radar ou desenvolver um ângulo e desdobramento completamente inédito.\n- Mantenha originalidade máxima no título e no conteúdo.\n`;
   }
 
   const pinterestNote = agent.pinterestEnabled
@@ -326,7 +414,7 @@ export function buildUserPrompt(
         return `${i + 1}. "${p.title}"${viewsStr}`;
       })
       .join("\n");
-    topPerformanceContext = `\nDESEMPENHO RECENTE DE AUDIÊNCIA (Posts de maior engajamento):\n${list}\n\nDIRETRIZ EDITORIAL DE ALTA PERFORMANCE: Analise o apelo, dinamismo e estrutura que geraram o alto interesse nos artigos acima. Aplique técnicas de retenção semelhantes no seu novo artigo, mantendo 100% de originalidade e fidelidade estrita ao foco editorial do agente.\n`;
+    topPerformanceContext = `\nDESEMPENHO RECENTE DE AUDIÊNCIA (Posts de maior engajamento deste nicho):\n${list}\n\nDIRETRIZ EDITORIAL DE ALTA PERFORMANCE: Analise o apelo, dinamismo e estrutura que geraram o alto interesse nos artigos acima neste nicho. Aplique técnicas de retenção semelhantes no seu novo artigo, mantendo 100% de originalidade e fidelidade estrita ao foco editorial do agente.\n`;
   }
 
   return `Data de hoje: ${date}.
@@ -334,10 +422,11 @@ Publicação para a categoria "${categoryName(agent.categoryId)}".
 
 ${themeSection}
 ${newsContext}
+${recentArticlesContext}
 ${topPerformanceContext}
 ${pinterestNote}
 
-Gere o artigo completo seguindo rigorosamente o FOCO EDITORIAL e INSTRUÇÕES acima, conforme o formato JSON solicitado no system prompt.`;
+Gere o artigo completo seguindo rigorosamente o FOCO EDITORIAL, a DIRETRIZ DE INEDITISMO (sem repetir pautas já cobertas nos artigos recentes) e as INSTRUÇÕES acima, conforme o formato JSON solicitado no system prompt.`;
 }
 
 export function ensureSemanticHtml(raw: string): string {
@@ -783,9 +872,35 @@ export async function runImageAgentOnce(
 
     let topContext = "";
     if (topPosts.length > 0) {
-      topContext = `\nPins/Posts de maior audiência recente no blog:\n` +
+      topContext = `\nPins/Posts de maior audiência recente no blog (Inspiração de nicho):\n` +
         topPosts.map((p, i) => `${i + 1}. "${p.title}"`).join("\n") +
         `\nInspire-se no estilo de interesse do público acima para criar uma imagem e título ainda mais magnéticos.\n`;
+    }
+
+    let recentArticles: { title: string }[] = [];
+    try {
+      const blogPosts = await blog.listPosts({ limit: 10, category_id: agent.categoryId, sort: "created_at" }).catch(() => ({ posts: [] }));
+      for (const p of blogPosts.posts) {
+        if (p.title && !recentArticles.some((a) => a.title.toLowerCase() === p.title.toLowerCase())) {
+          recentArticles.push({ title: p.title });
+        }
+      }
+      const agentRuns = await store.listRuns(15, agent.id).catch(() => []);
+      for (const r of agentRuns) {
+        if (r.status === "success" && r.title) {
+          const clean = r.title.replace(/^\[Visual[^\]]*\]\s*/i, "").trim();
+          if (clean && !recentArticles.some((a) => a.title.toLowerCase() === clean.toLowerCase())) {
+            recentArticles.push({ title: clean });
+          }
+        }
+      }
+    } catch {}
+
+    let recentContext = "";
+    if (recentArticles.length > 0) {
+      recentContext = `\nPins/Posts já criados recentemente no blog (NÃO REPETIR ESTES TEMAS):\n` +
+        recentArticles.slice(0, 8).map((p, i) => `${i + 1}. "${p.title}"`).join("\n") +
+        `\nDIRETRIZ DE INEDITISMO: NÃO repita o mesmo tema ou proposta dos pins anteriores. Crie uma nova abordagem visual e de copy 100% inédita.\n`;
     }
 
     const visualDirectives = (task?.trim() || agent.prompt.trim())
@@ -795,7 +910,7 @@ export async function runImageAgentOnce(
     const userPrompt = `Formato de imagem desejado: ${agent.imageAspectRatio || "9:16"} (Vertical/Pinterest).
 Categoria: "${categoryName(agent.categoryId)}".
 Foco / Descrição: ${task?.trim() || agent.description || "Criação visual de alto engajamento"}.
-${visualDirectives}${topContext}
+${visualDirectives}${recentContext}${topContext}
 Gere o JSON com o "image_prompt" rico e detalhado em inglês (incorporando as diretrizes de estilo acima), título magnético e texto do Pin.`;
 
     let parsed: ImagePostData;
@@ -972,11 +1087,40 @@ export async function runAgentOnce(
       runLog.step("Consultando posts de maior audiência recente no blog...");
       topPosts = await blog.getTopPosts("views_7d", 3);
       if (topPosts.length > 0) {
-        runLog.info(`Histórico recente obtido (${topPosts.length} posts): ${topPosts.map((p) => `"${p.title}"`).join(", ")}`);
+        runLog.info(`Histórico recente de audiência obtido (${topPosts.length} posts): ${topPosts.map((p) => `"${p.title}"`).join(", ")}`);
       }
     } catch (topErr) {
       runLog.warn(`Não foi possível carregar histórico do blog: ${topErr instanceof Error ? topErr.message : topErr}`);
     }
+
+    let recentArticles: { title: string; slug?: string }[] = [];
+    try {
+      runLog.step("Consultando últimos artigos publicados para evitar repetição...");
+      // 1. Artigos recentes da categoria no blog
+      const blogPosts = await blog.listPosts({ limit: 15, category_id: agent.categoryId, sort: "created_at" }).catch(() => ({ posts: [] }));
+      for (const p of blogPosts.posts) {
+        if (p.title && !recentArticles.some((a) => a.title.toLowerCase() === p.title.toLowerCase())) {
+          recentArticles.push({ title: p.title, slug: p.slug });
+        }
+      }
+      // 2. Execuções recentes salvas no banco local deste agente
+      const agentRuns = await store.listRuns(25, agent.id).catch(() => []);
+      for (const r of agentRuns) {
+        if (r.status === "success" && r.title) {
+          const clean = r.title.replace(/^\[Visual[^\]]*\]\s*/i, "").trim();
+          if (clean && !recentArticles.some((a) => a.title.toLowerCase() === clean.toLowerCase())) {
+            recentArticles.push({ title: clean, slug: r.postSlug || undefined });
+          }
+        }
+      }
+      if (recentArticles.length > 0) {
+        runLog.info(`Histórico recente verificado (${recentArticles.length} artigos anteriores): ${recentArticles.slice(0, 5).map((a) => `"${a.title}"`).join(", ")}`);
+      }
+    } catch (recErr) {
+      runLog.warn(`Não foi possível consultar artigos recentes: ${recErr instanceof Error ? recErr.message : recErr}`);
+    }
+
+    const recentArticleTitles = recentArticles.map((a) => a.title);
 
     let recentNews: NewsItem[] = [];
     try {
@@ -985,8 +1129,13 @@ export async function runAgentOnce(
       const activeRss = rssSources.filter((s) => s.isActive);
       if (activeRss.length > 0) {
         runLog.step(`Consultando ${activeRss.length} fontes RSS ativas cadastradas para a categoria...`);
-        const feedArticles = await fetchMultiFeedRadar(activeRss, 6);
+        const feedArticles = await fetchMultiFeedRadar(activeRss, 15);
         for (const art of feedArticles) {
+          const occurrences = countNewsOccurrencesInArticles(art.title, recentArticleTitles);
+          if (occurrences >= 2) {
+            runLog.info(`Notícia do radar descartada (já coberta ${occurrences}x nos artigos recentes): "${art.title}"`);
+            continue;
+          }
           recentNews.push({
             title: art.title,
             source: art.source,
@@ -999,17 +1148,20 @@ export async function runAgentOnce(
       runLog.warn(`Erro ao consultar biblioteca RSS: ${rssErr instanceof Error ? rssErr.message : rssErr}`);
     }
 
-    if (agent.toolsEnabled) {
+    if (agent.toolsEnabled && recentNews.length < 4) {
       try {
         // 2. Complementar com Google News RSS em tempo real se necessário
-        if (recentNews.length < 3) {
-          runLog.step("Pesquisando notícias de última hora complementares...");
-          const newsQuery = task?.trim() || agent.description?.trim() || "tecnologia inovacao inteligencia artificial";
-          const googleNews = await fetchRecentNews(newsQuery, 5);
-          for (const item of googleNews) {
-            if (!recentNews.some((rn) => rn.title.slice(0, 30).toLowerCase() === item.title.slice(0, 30).toLowerCase())) {
-              recentNews.push(item);
-            }
+        runLog.step("Pesquisando notícias de última hora complementares...");
+        const newsQuery = task?.trim() || agent.description?.trim() || "tecnologia inovacao inteligencia artificial";
+        const googleNews = await fetchRecentNews(newsQuery, 8);
+        for (const item of googleNews) {
+          const occurrences = countNewsOccurrencesInArticles(item.title, recentArticleTitles);
+          if (occurrences >= 2) {
+            runLog.info(`Notícia complementar descartada (já coberta ${occurrences}x): "${item.title}"`);
+            continue;
+          }
+          if (!recentNews.some((rn) => rn.title.slice(0, 30).toLowerCase() === item.title.slice(0, 30).toLowerCase())) {
+            recentNews.push(item);
           }
         }
       } catch (newsErr) {
@@ -1020,12 +1172,14 @@ export async function runAgentOnce(
     if (recentNews.length > 0) {
       recentNews = recentNews.slice(0, 6);
       runLog.info(
-        `Notícias quentes em tempo real obtidas (${recentNews.length} fontes)`,
+        `Notícias inéditas em tempo real filtradas (${recentNews.length} fontes)`,
         recentNews.map((n) => `• [${n.source}] ${n.title} (${n.pubDate})`).join("\n"),
       );
     } else {
-      runLog.info("Nenhuma notícia em tempo real encontrada nos feeds diretos; o agente usará busca autônoma se necessário.");
+      runLog.info("Nenhuma notícia inédita nos feeds diretos (ou todas já atingiram o limite de 2 coberturas); o agente usará foco editorial autônomo.");
     }
+
+    const userPrompt = buildUserPrompt(agent, topPosts, task, recentNews, recentArticles);
 
     let article: Article;
     let totalTokensIn = 0;
@@ -1038,7 +1192,6 @@ export async function runAgentOnce(
         runLog.step(`Executando Redator com Agent SDK (Tools & Web Search ativas)...`);
         const agentSdk = new AgentSdkOpenRouter({ apiKey: or.getApiKey() });
         const tools = createAgentTools(blog, pexels, runLog);
-        const userPrompt = buildUserPrompt(agent, topPosts, task, recentNews);
         const result = agentSdk.callModel({
           model: agent.model,
           instructions: (ctx) =>
@@ -1062,7 +1215,7 @@ export async function runAgentOnce(
         const completion = await or.chat({
           model: agent.model,
           system: SYSTEM_PROMPT,
-          user: buildUserPrompt(agent, topPosts, task, recentNews),
+          user: userPrompt,
           maxTokens: agent.maxTokens,
           temperature: 0.85,
           webSearch: true,
@@ -1080,7 +1233,7 @@ export async function runAgentOnce(
       const completion = await or.chat({
         model: agent.model,
         system: SYSTEM_PROMPT,
-        user: buildUserPrompt(agent, topPosts, task, recentNews),
+        user: userPrompt,
         maxTokens: agent.maxTokens,
         temperature: 0.85,
         webSearch: Boolean(agent.toolsEnabled),
