@@ -3971,8 +3971,13 @@ export function renderCreatePostTab(data: DashboardData): string {
         s.innerHTML = '<span style="color:var(--c-danger);font-weight:500">' + r.error + '</span>';
       } else {
         var blogObj = blogs.find(function(b){ return b.id === p.blog_id; });
-        var cleanSlug = String(r.slug || "").replace(/^\/+/, "");
-        var viewUrl = blogObj && cleanSlug ? blogObj.baseUrl.replace(/\/api\/cli\/?$/, "") + "/post/" + cleanSlug : null;
+        var cleanSlug = String(r.slug || "").trim();
+        while (cleanSlug.indexOf("/") === 0) cleanSlug = cleanSlug.slice(1);
+        var base = blogObj && blogObj.baseUrl ? blogObj.baseUrl.trim() : "";
+        while (base.lastIndexOf("/") === base.length - 1 && base.length > 0) base = base.slice(0, -1);
+        if (base.slice(-8) === "/api/cli") base = base.slice(0, -8);
+        while (base.lastIndexOf("/") === base.length - 1 && base.length > 0) base = base.slice(0, -1);
+        var viewUrl = (blogObj && cleanSlug) ? base + "/post/" + cleanSlug : null;
         s.innerHTML = '<div style="padding:12px;background:var(--c-success-soft);border:1px solid rgba(34,197,94,.3);border-radius:var(--radius);color:var(--c-success);font-weight:500;display:flex;align-items:center;justify-content:space-between;gap:8px">' +
           '<span>Post #' + r.id + ' ' + (ispub ? 'publicado' : 'salvo como rascunho') + ' com sucesso.</span>' +
           (viewUrl ? '<a href="' + viewUrl + '" target="_blank" rel="noopener" class="button button-xs button-secondary" style="color:var(--c-accent)">Abrir no Blog</a>' : '') +
